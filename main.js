@@ -8,20 +8,20 @@ const defaults = {
     estadiosLayerMinZoom: 5,
     estadiosLayerMaxZoom: 30,
 
-    poiLayerMinZoom : 12,
-    poiLayerMaxZoom : 30,
+    poiLayerMinZoom: 12,
+    poiLayerMaxZoom: 30,
 }
 
 const geojsonFormat = new ol.format.GeoJSON();
 
-async function fetchData(){
+async function fetchData() {
     const url = 'http://localhost/ptas_test/db.php'
     const res = await fetch(url, {})
     return res.json();
 }
 
-async function main(){
-    try{
+async function main() {
+    try {
         const response = await fetchData();
 
         const estadios = JSON.parse(response[0]);
@@ -36,7 +36,10 @@ async function main(){
             features: geojsonFormat.readFeatures(poiBares)
         })
 
+        const poiTurf = geojsonFormat.writeFeaturesObject(poiBaresSource.getFeatures());
+
         const estadiosLayer = new ol.layer.Vector({
+            zIndex: 2,
             maxZoom: defaults.estadiosLayerMaxZoom,
             minZoom: defaults.estadiosLayerMinZoom,
             source: estadiosSource,
@@ -50,6 +53,7 @@ async function main(){
 
         const poiBaresLayer = new ol.layer.Vector({
             source: poiBaresSource,
+            zIndex: 2,
             style: new ol.style.Style({
                 image: new ol.style.Circle({
                     radius: 5,
@@ -65,33 +69,35 @@ async function main(){
         })
 
         const osmLayer = new ol.layer.Tile({
-            source: new ol.source.OSM()
+            source: new ol.source.OSM(),
+            zIndex: 1
         });
 
         //Hull
         const source_hull = new ol.source.Vector({})
         const hull = new ol.layer.Vector({
             title: 'hull',
-            source: source_hull
+            source: source_hull,
+            zIndex: 1
         })
         let hull_turf;
 
 
         const layers = [osmLayer, estadiosLayer, poiBaresLayer, hull]
-        
+
         const view = new ol.View({
             center: defaults.mapCenter,
             zoom: defaults.mapZoom,
         })
 
-        
+
         //Estadios
         const map = new ol.Map({
             target: document.getElementById('map'),
             layers: layers,
             view: view
         });
-        
+
         const element = $('#popup')[0];
         const popup = new ol.Overlay({
             element: element,
@@ -100,24 +106,25 @@ async function main(){
         })
         map.addOverlay(popup)
 
-        function disposePopover(){
-            if(element){
+        function disposePopover() {
+            if (element) {
                 element.setAttribute("hidden", "hidden")
                 element.innerText = "";
             }
         }
 
-        map.on('click', function(evt){
-            const feature = map.forEachFeatureAtPixel(evt.pixel, (feature)=>feature);
+        map.on('click', function (evt) {
+            const feature = map.forEachFeatureAtPixel(evt.pixel, (feature) => feature);
             disposePopover();
-            if(!feature) return;
-            if(feature.values_.features) return;
+            if (!feature) return;
+            if (feature.values_.features) return;
+            if (feature.values_.nome === undefined) return;
 
             const coordenadas = feature.values_.geometry.flatCoordinates;
             popup.setPosition(coordenadas)
             element.removeAttribute("hidden")
             element.innerText = feature.values_.nome;
-            
+
         })
 
         map.on('pointermove', function (e) {
@@ -128,21 +135,21 @@ async function main(){
 
         map.on('movestart', disposePopover);
 
-        
+
 
 
         //Popular Selects
-        Object.values(estadios.features).map( std => {
+        Object.values(estadios.features).map(std => {
             const nome = std.properties.nome
             const pos = std.geometry.coordinates
             const node = document.createElement('option')
             node.value = pos;
             node.innerText = nome;
             return node;
-        }).forEach( opt => estadioSelect.appendChild(opt))
+        }).forEach(opt => estadioSelect.appendChild(opt))
 
-        estadioSelect.addEventListener('change', async function(){
-            if(estadioSelect.value === "") return;
+        estadioSelect.addEventListener('change', async function () {
+            if (estadioSelect.value === "") return;
             const coordenadas = estadioSelect.value.split(',')
             coordenadas[0] = parseFloat(coordenadas[0])
             coordenadas[1] = parseFloat(coordenadas[1])
@@ -150,7 +157,7 @@ async function main(){
             const coords = ol.proj.transform(coordenadas, 'EPSG:3857', 'EPSG:4326')
             const lon = coords[0]
             const lat = coords[1]
-            
+
 
             view.animate({
                 center: coordenadas,
@@ -159,31 +166,68 @@ async function main(){
                 easing: ol.easing.easeOut
             })
             $('#estadio')[0].innerText = $('option:selected')[0].innerText
-            
+
+            //polígono com área alcancável a pé em 15 minutos desde o estádio indicado
             const routing_url = 'https://routing.gis4cloud.pt/isochrone?json=' +
-            '{"locations":[{"lat":' + lat + ',"lon":' + lon +'}],' +
-            '"costing":"pedestrian","polygons":true,"contours":[{"time":15.0,"color":"000000"}]}&id=hull inicial'
+                '{"locations":[{"lat":' + lat + ',"lon":' + lon + '}],' +
+                '"costing":"pedestrian","polygons":true,"contours":[{"time":15.0,"color":"000000"}]}&id=hull inicial'
+
+            try {
+                const response = await fetch(routing_url);
+                const dados = await response.json();
+                source_hull.clear();
+                //const feats = geojsonFormat.readFeatures(dados);
+                hull_turf = geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(dados, {
+                    dataProjection: 'EPSG:4326',
+                    featureProjection: 'EPSG:3857'
+                }));
+                console.log(hull_turf);
+                source_hull.addFeatures(geojsonFormat.readFeatures(dados, {
+                    dataProjection: 'EPSG:4326',
+                    featureProjection: 'EPSG:3857'
+                }));
+
+                console.log(estadiosTurf)
+
+                // $.ajax({
+                //     url: routing_url, async: false, success: function (dados) {
+                //         source_hull.clear();
+                //         const feats = geojsonFormat.readFeatures(dados);
+                //         hull_turf = geojsonFormat.writeFeaturesObject(feats);
+                //         source_hull.addFeatures(geojsonFormat.readFeatures(dados, {
+                //             dataProjection: 'EPSG:4326',
+                //             featureProjection: 'EPSG:3857'
+                //         }));
+                //     }
+                // })
+
+                const hullPolygon = turf.getGeom(hull_turf.features[0]);
+                const estadiosDentro = turf.pointsWithinPolygon(estadiosTurf, hullPolygon);
+                console.log(estadiosDentro);
+                const poiBaresDentro = turf.pointsWithinPolygon(poiTurf, hullPolygon);
+                console.log(poiBaresDentro);
+
+                hull.setVisible(true);
+                map.getView().fit(source_hull.getExtent())
 
 
-            $.ajax({
-                url: routing_url, async: false, success: function(dados){
-                    source_hull.clear();
-                    //const feats = geojsonFormat.readFeatures(dados);
-                    //hull_turf = geojsonFormat.writeFeaturesObject(feats);
-                    source_hull.addFeatures(geojsonFormat.readFeatures(dados, {
-                        dataProjection: 'EPSG:4326',
-                        featureProjection: 'EPSG:3857'
-                    }));
-                }
-            })
+                estadiosLayer.setVisible(true);
+                estadiosLayer.getSource().clear();
+                estadiosSource.addFeatures(geojsonFormat.readFeatures(estadiosDentro));
+                estadiosLayer.getSource().addFeatures(geojsonFormat.readFeatures(estadiosDentro));
 
-            hull.setVisible(true);
+                poiBaresLayer.setVisible(true);
+                poiBaresLayer.getSource().clear();
+                poiBaresSource.addFeatures(geojsonFormat.readFeatures(poiBaresDentro));
+                poiBaresLayer.getSource().addFeatures(geojsonFormat.readFeatures(poiBaresDentro));
 
-            map.getView().fit(source_hull.getExtent())
-            
+
+            } catch (error) {
+                console.error('Error fetching routing data:', error);
+            }
         })
 
-    } catch (error){
+    } catch (error) {
         console.log(error);
     }
 }
