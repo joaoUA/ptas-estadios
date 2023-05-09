@@ -1,5 +1,8 @@
 const estadioSelect = document.getElementById('stadium-select');
-
+const toggleFilters = document.getElementById("toggle-filters-btn");
+const filtersContainer = document.getElementById("poi-filters-container")
+const filtersElement = document.getElementById("poi-filters");
+const submitFilters = document.getElementById("submit-filters-btn");
 
 const defaults = {
     mapCenter: [-1106000, 4806000],
@@ -13,6 +16,10 @@ const defaults = {
 }
 
 const geojsonFormat = new ol.format.GeoJSON();
+
+const estadioCache = {}
+let poiCache = {}
+const filters = new Set()
 
 async function fetchData() {
     const url = 'http://localhost/ptas_test/db.php'
@@ -54,18 +61,7 @@ async function main() {
         const poiBaresLayer = new ol.layer.Vector({
             source: poiBaresSource,
             zIndex: 2,
-            style: new ol.style.Style({
-                image: new ol.style.Circle({
-                    radius: 5,
-                    fill: new ol.style.Fill({
-                        color: 'red'
-                    }),
-                    stroke: new ol.style.Stroke({
-                        color: 'black',
-                        width: 1
-                    })
-                })
-            })
+            style: originaPoIStyle
         })
 
         const osmLayer = new ol.layer.Tile({
@@ -187,13 +183,19 @@ async function main() {
 
                 const hullPolygon = turf.getGeom(hull_turf.features[0]);
                 const estadiosDentro = turf.pointsWithinPolygon(estadiosTurf, hullPolygon);
-                console.log(estadiosDentro);
+                // console.log(estadiosDentro);
                 const poiBaresDentro = turf.pointsWithinPolygon(poiTurf, hullPolygon);
-                console.log(poiBaresDentro);
+                // console.log(poiBaresDentro);
 
                 hull.setVisible(true);
                 map.getView().fit(source_hull.getExtent())
 
+                poiCache = {}
+                poiBaresDentro.features.forEach(poi => {
+                    filters.add(poi.properties.categoria)
+                    poiCache[poi.id] = poi
+                })
+                console.log(filters)
 
                 estadiosLayer.setVisible(true);
                 estadiosLayer.getSource().clear();
@@ -207,19 +209,34 @@ async function main() {
 
                 const poiContainer = document.getElementById("poi-container")
                 poiContainer.innerHTML = ""
-                poiBaresDentro.features.forEach(feat => {
+
+                Object.values(poiCache).forEach(poi => {
                     const node = document.createElement("div");
                     node.classList.add("poi")
+                    node.setAttribute("data-id", poi.id);
                     const titulo = document.createElement("h4")
                     titulo.classList.add("poi-titulo")
-                    titulo.innerText = feat.properties.nome
+                    titulo.innerText = poi.properties.nome
                     const categoria = document.createElement("p")
-                    categoria.innerText = feat.properties.categoria
+                    categoria.innerText = poi.properties.categoria
                     categoria.classList.add("poi-categoria")
 
                     node.appendChild(titulo)
                     node.appendChild(categoria)
                     poiContainer.appendChild(node)
+
+                    node.addEventListener("click", () => {
+                    })
+
+                    node.addEventListener("mouseenter", () => {
+                        const feature = poiCache[node.dataset.id];
+                        const coordenadas = feature.geometry.coordinates;
+                        popup.setPosition(coordenadas)
+                        element.removeAttribute("hidden")
+                        element.innerText = feature.properties.nome;
+                    })
+                    node.addEventListener("mouseleave", disposePopover)
+
                 })
 
             } catch (error) {
@@ -234,6 +251,36 @@ async function main() {
 
 main();
 
+toggleFilters.addEventListener("click", () => {
+    if (filters.size == 0) return
+
+    filtersElement.innerHTML = ""
+
+    filters.forEach(filter => {
+        const node = document.createElement("div");
+        node.classList.add("filter")
+        const checkbox = document.createElement("input")
+        checkbox.setAttribute("type", "checkbox")
+        const label = document.createElement("label")
+        label.innerText = filter
+
+        node.setAttribute("id", "filter")
+        node.appendChild(checkbox);
+        node.append(label);
+        filtersElement.appendChild(node)
+        /*
+                    <div class="filter">
+                            <input type="checkbox" name="" id="">
+                            <label for="">test</label>
+                        </div>
+        */
+    })
+
+    filtersContainer.style.display = "block"
+})
+submitFilters.addEventListener("click", () => {
+    filtersContainer.style.display = "none"
+})
 
 //Estilos
 const mainFill = new ol.style.Fill({
@@ -245,4 +292,32 @@ const secondaryFill = new ol.style.Fill({
 const mainStroke = new ol.style.Stroke({
     color: 'black',
     width: 1
+})
+
+const originaPoIStyle = new ol.style.Style({
+    image: new ol.style.Circle({
+        radius: 5,
+        fill: mainFill,
+        stroke: mainStroke
+    })
+})
+
+
+const hoverFill = new ol.style.Fill({
+    color: 'blue'
+})
+
+const hoverStroke = new ol.style.Stroke({
+    color: 'black',
+    width: 2
+})
+
+const hoverStyle = new ol.style.Style({
+    fill: hoverFill,
+    stroke: hoverStroke,
+    image: new ol.style.Circle({
+        radius: 10,
+        fill: hoverFill,
+        stroke: hoverStroke
+    })
 })
