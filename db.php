@@ -2,10 +2,14 @@
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Headers: Content-Type");
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
-    $dbhost = 'localhost';
-    $dbuser = 'postgres';
-    $dbpass = '1234';
-    $dbname = 'PTAS';
+    // $dbhost = 'localhost';
+    // $dbuser = 'postgres';
+    // $dbpass = '1234';
+    // $dbname = 'PTAS';
+    $dbhost = 'gis4cloud.com';
+    $dbuser = 'grupo5_ptas2023';
+    $dbpass = 'grupo5_ptas2023';
+    $dbname = 'grupo5_ptas2023';
    
    $conn = pg_connect("host=$dbhost dbname=$dbname user=$dbuser password=$dbpass");
 
@@ -52,7 +56,7 @@
             'geometry',ST_AsGeoJSON(geom)::jsonb,
             'properties', to_jsonb(inputs)- 'id' - 'geom'
         ) AS feature
-            from (select * from poi_bares) inputs) features;") or die('Query Failed');
+            from (select * from poi_final) inputs) features;") or die('Query Failed');
    
     $resPOIs =  pg_fetch_assoc($resultPoIBares)["jsonb_build_object"];
 

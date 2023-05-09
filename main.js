@@ -136,8 +136,6 @@ async function main() {
         map.on('movestart', disposePopover);
 
 
-
-
         //Popular Selects
         Object.values(estadios.features).map(std => {
             const nome = std.properties.nome
@@ -187,20 +185,6 @@ async function main() {
                     featureProjection: 'EPSG:3857'
                 }));
 
-                console.log(estadiosTurf)
-
-                // $.ajax({
-                //     url: routing_url, async: false, success: function (dados) {
-                //         source_hull.clear();
-                //         const feats = geojsonFormat.readFeatures(dados);
-                //         hull_turf = geojsonFormat.writeFeaturesObject(feats);
-                //         source_hull.addFeatures(geojsonFormat.readFeatures(dados, {
-                //             dataProjection: 'EPSG:4326',
-                //             featureProjection: 'EPSG:3857'
-                //         }));
-                //     }
-                // })
-
                 const hullPolygon = turf.getGeom(hull_turf.features[0]);
                 const estadiosDentro = turf.pointsWithinPolygon(estadiosTurf, hullPolygon);
                 console.log(estadiosDentro);
@@ -221,6 +205,22 @@ async function main() {
                 poiBaresSource.addFeatures(geojsonFormat.readFeatures(poiBaresDentro));
                 poiBaresLayer.getSource().addFeatures(geojsonFormat.readFeatures(poiBaresDentro));
 
+                const poiContainer = document.getElementById("poi-container")
+                poiContainer.innerHTML = ""
+                poiBaresDentro.features.forEach(feat => {
+                    const node = document.createElement("div");
+                    node.classList.add("poi")
+                    const titulo = document.createElement("h4")
+                    titulo.classList.add("poi-titulo")
+                    titulo.innerText = feat.properties.nome
+                    const categoria = document.createElement("p")
+                    categoria.innerText = feat.properties.categoria
+                    categoria.classList.add("poi-categoria")
+
+                    node.appendChild(titulo)
+                    node.appendChild(categoria)
+                    poiContainer.appendChild(node)
+                })
 
             } catch (error) {
                 console.error('Error fetching routing data:', error);
