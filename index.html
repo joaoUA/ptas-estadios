@@ -23,13 +23,12 @@
             <div class="config-group">
                 <label for="stadium-select">Escolha um estádio:</label>
                 <select name="stadium-select" id="stadium-select">
-                    <option value=""></option>
                 </select>
             </div>
             <div id="poi-results">
-                <h2 id="estadio"></h2>
+                <h2 id="estadio-title"></h2>
                 <button id="toggle-filters-btn">Filtros</button>
-                <div id="poi-filters-container">
+                <div id="poi-filters-container" hidden="true">
                     <div id="poi-filters">
 
                     </div>
@@ -44,7 +43,7 @@
         <section id="map-container">
             <div class="map" id="map">
                 <!--<div class="popup">Text</div>-->
-                <div id="popup">Text</div>
+                <div id="popup" hidden="hidden">Text</div>
             </div>
         </section>
     </main>

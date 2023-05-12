@@ -1,261 +1,85 @@
-const estadioSelect = document.getElementById('stadium-select');
-const toggleFilters = document.getElementById("toggle-filters-btn");
-const filtersContainer = document.getElementById("poi-filters-container")
-const filtersElement = document.getElementById("poi-filters");
-const submitFilters = document.getElementById("submit-filters-btn");
+'use strict'
+//#region HTML Elements
+const targetElement = document.getElementById('map');
+const stadiumSelect = document.getElementById('stadium-select');
+const popupElement = document.getElementById('popup');
+const stadiumHeading = document.getElementById('estadio-title');
+const poiContainer = document.getElementById('poi-container');
+const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
+const filtersContainer = document.getElementById('poi-filters-container');
+const filtersElement = document.getElementById('poi-filters');
+const submitFiltersBtn = document.getElementById('submit-filters-btn');
+//#endregion
 
-const defaults = {
-    mapCenter: [-1106000, 4806000],
-    mapZoom: 7,
-
-    estadiosLayerMinZoom: 5,
-    estadiosLayerMaxZoom: 30,
-
-    poiLayerMinZoom: 12,
-    poiLayerMaxZoom: 30,
-}
-
+//#region Globals
+const pgDataProjection = 'EPSG:3857';
+const olMapProjection = 'EPSG:3857';
+const turfProjection = 'EPSG:4326';
 const geojsonFormat = new ol.format.GeoJSON();
 
-const estadioCache = {}
-let poiCache = {}
-const filters = new Set()
-
-async function fetchData() {
-    const url = 'http://localhost/ptas_test/db.php'
-    const res = await fetch(url, {})
-    return res.json();
+const mapContext = {
+    view: null,
+    layers: null,
+    map: null,
+    projection: olMapProjection,
 }
+const mapData = {
+    stadiums: null,
+    pois: null
+}
+const filters = new Set();
+let poisCache = {};
 
-async function main() {
+async function fetchData(url) {
+    const res = await fetch(url, {});
+    return await res.json();
+}
+//#endregion
+
+//#region Fetch Stadium Data
+const stadiumDataUrl = 'http://localhost/ptas_test/php/get_stadiums.php';
+async function getStadiumData() {
     try {
-        const response = await fetchData();
+        const response = await fetchData(stadiumDataUrl);
+        return await JSON.parse(response);
+    }
+    catch (error) {
+        console.log(error);
+        return;
+    }
+}
+//#endregion
 
-        const estadios = JSON.parse(response[0]);
-        const poiBares = JSON.parse(response[1]);
-
-        const estadiosSource = new ol.source.Vector({
-            features: geojsonFormat.readFeatures(estadios)
-        })
-        const estadiosTurf = geojsonFormat.writeFeaturesObject(estadiosSource.getFeatures());
-
-        const poiBaresSource = new ol.source.Vector({
-            features: geojsonFormat.readFeatures(poiBares)
-        })
-
-        const poiTurf = geojsonFormat.writeFeaturesObject(poiBaresSource.getFeatures());
-
-        const estadiosLayer = new ol.layer.Vector({
-            zIndex: 2,
-            maxZoom: defaults.estadiosLayerMaxZoom,
-            minZoom: defaults.estadiosLayerMinZoom,
-            source: estadiosSource,
-            style: new ol.style.Style({
-                image: new ol.style.Icon({
-                    src: "./img/estadio-96.png",
-                    scale: 0.3
-                })
-            })
-        })
-
-        const poiBaresLayer = new ol.layer.Vector({
-            source: poiBaresSource,
-            zIndex: 2,
-            style: originaPoIStyle
-        })
-
-        const osmLayer = new ol.layer.Tile({
-            source: new ol.source.OSM(),
-            zIndex: 1
-        });
-
-        //Hull
-        const source_hull = new ol.source.Vector({})
-        const hull = new ol.layer.Vector({
-            title: 'hull',
-            source: source_hull,
-            zIndex: 1
-        })
-        let hull_turf;
-
-
-        const layers = [osmLayer, estadiosLayer, poiBaresLayer, hull]
-
-        const view = new ol.View({
-            center: defaults.mapCenter,
-            zoom: defaults.mapZoom,
-        })
-
-
-        //Estadios
-        const map = new ol.Map({
-            target: document.getElementById('map'),
-            layers: layers,
-            view: view
-        });
-
-        const element = $('#popup')[0];
-        const popup = new ol.Overlay({
-            element: element,
-            positioning: 'bottom-center',
-            stopEvent: false,
-        })
-        map.addOverlay(popup)
-
-        function disposePopover() {
-            if (element) {
-                element.setAttribute("hidden", "hidden")
-                element.innerText = "";
-            }
-        }
-
-        map.on('click', function (evt) {
-            const feature = map.forEachFeatureAtPixel(evt.pixel, (feature) => feature);
-            disposePopover();
-            if (!feature) return;
-            if (feature.values_.features) return;
-            if (feature.values_.nome === undefined) return;
-
-            const coordenadas = feature.values_.geometry.flatCoordinates;
-            popup.setPosition(coordenadas)
-            element.removeAttribute("hidden")
-            element.innerText = feature.values_.nome;
-
-        })
-
-        map.on('pointermove', function (e) {
-            const pixel = map.getEventPixel(e.originalEvent);
-            const hit = map.hasFeatureAtPixel(pixel);
-            map.getTarget().style.cursor = hit ? 'pointer' : '';
-        });
-
-        map.on('movestart', disposePopover);
-
-
-        //Popular Selects
-        Object.values(estadios.features).map(std => {
-            const nome = std.properties.nome
-            const pos = std.geometry.coordinates
-            const node = document.createElement('option')
-            node.value = pos;
-            node.innerText = nome;
-            return node;
-        }).forEach(opt => estadioSelect.appendChild(opt))
-
-        estadioSelect.addEventListener('change', async function () {
-            if (estadioSelect.value === "") return;
-            const coordenadas = estadioSelect.value.split(',')
-            coordenadas[0] = parseFloat(coordenadas[0])
-            coordenadas[1] = parseFloat(coordenadas[1])
-
-            const coords = ol.proj.transform(coordenadas, 'EPSG:3857', 'EPSG:4326')
-            const lon = coords[0]
-            const lat = coords[1]
-
-
-            view.animate({
-                center: coordenadas,
-                duration: 1000,
-                zoom: 16,
-                easing: ol.easing.easeOut
-            })
-            $('#estadio')[0].innerText = $('option:selected')[0].innerText
-
-            //polígono com área alcancável a pé em 15 minutos desde o estádio indicado
-            const routing_url = 'https://routing.gis4cloud.pt/isochrone?json=' +
-                '{"locations":[{"lat":' + lat + ',"lon":' + lon + '}],' +
-                '"costing":"pedestrian","polygons":true,"contours":[{"time":15.0,"color":"000000"}]}&id=hull inicial'
-
-            try {
-                const response = await fetch(routing_url);
-                const dados = await response.json();
-                source_hull.clear();
-                //const feats = geojsonFormat.readFeatures(dados);
-                hull_turf = geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(dados, {
-                    dataProjection: 'EPSG:4326',
-                    featureProjection: 'EPSG:3857'
-                }));
-                console.log(hull_turf);
-                source_hull.addFeatures(geojsonFormat.readFeatures(dados, {
-                    dataProjection: 'EPSG:4326',
-                    featureProjection: 'EPSG:3857'
-                }));
-
-                const hullPolygon = turf.getGeom(hull_turf.features[0]);
-                const estadiosDentro = turf.pointsWithinPolygon(estadiosTurf, hullPolygon);
-                // console.log(estadiosDentro);
-                const poiBaresDentro = turf.pointsWithinPolygon(poiTurf, hullPolygon);
-                // console.log(poiBaresDentro);
-
-                hull.setVisible(true);
-                map.getView().fit(source_hull.getExtent())
-
-                poiCache = {}
-                poiBaresDentro.features.forEach(poi => {
-                    filters.add(poi.properties.categoria)
-                    poiCache[poi.id] = poi
-                })
-                console.log(filters)
-
-                estadiosLayer.setVisible(true);
-                estadiosLayer.getSource().clear();
-                estadiosSource.addFeatures(geojsonFormat.readFeatures(estadiosDentro));
-                estadiosLayer.getSource().addFeatures(geojsonFormat.readFeatures(estadiosDentro));
-
-                poiBaresLayer.setVisible(true);
-                poiBaresLayer.getSource().clear();
-                poiBaresSource.addFeatures(geojsonFormat.readFeatures(poiBaresDentro));
-                poiBaresLayer.getSource().addFeatures(geojsonFormat.readFeatures(poiBaresDentro));
-
-                const poiContainer = document.getElementById("poi-container")
-                poiContainer.innerHTML = ""
-
-                Object.values(poiCache).forEach(poi => {
-                    const node = document.createElement("div");
-                    node.classList.add("poi")
-                    node.setAttribute("data-id", poi.id);
-                    const titulo = document.createElement("h4")
-                    titulo.classList.add("poi-titulo")
-                    titulo.innerText = poi.properties.nome
-                    const categoria = document.createElement("p")
-                    categoria.innerText = poi.properties.categoria
-                    categoria.classList.add("poi-categoria")
-
-                    node.appendChild(titulo)
-                    node.appendChild(categoria)
-                    poiContainer.appendChild(node)
-
-                    node.addEventListener("click", () => {
-                    })
-
-                    node.addEventListener("mouseenter", () => {
-                        const feature = poiCache[node.dataset.id];
-                        const coordenadas = feature.geometry.coordinates;
-                        popup.setPosition(coordenadas)
-                        element.removeAttribute("hidden")
-                        element.innerText = feature.properties.nome;
-                    })
-                    node.addEventListener("mouseleave", disposePopover)
-
-                })
-
-            } catch (error) {
-                console.error('Error fetching routing data:', error);
-            }
-        })
-
+//#region Fetch Points of Interest Data
+const poisDataUrl = 'http://localhost/ptas_test/php/get_pointsofinterest.php';
+async function getPointsOfInterestData() {
+    try {
+        const response = await fetchData(poisDataUrl);
+        return await JSON.parse(response);
     } catch (error) {
         console.log(error);
+        return;
     }
 }
 
-main();
+//#endregion
 
-toggleFilters.addEventListener("click", () => {
-    if (filters.size == 0) return
+//#region Fetch Routing Polygon
+async function getRoutingPolygon(lon, lat, time, color) {
+    const url =
+        `https://routing.gis4cloud.pt/isochrone?json={"locations":[{"lat":${lat},"lon":${lon}}],"costing":"pedestrian","polygons":true,"contours":[{"time":15.0,"color":"000000"}]}&id=hull inicial`;
+    return await fetchData(url);
+}
+//#endregion
 
-    filtersElement.innerHTML = ""
+//#region Populate Filters on Sidebar
+toggleFiltersBtn.addEventListener('click', () => {
+    if (filters.size === 0)
+        return;
+    filtersContainer.hidden = !filtersContainer.hidden;
 
+    if (filtersContainer.hidden)
+        return;
     filters.forEach(filter => {
         const node = document.createElement("div");
         node.classList.add("filter")
@@ -268,19 +92,225 @@ toggleFilters.addEventListener("click", () => {
         node.appendChild(checkbox);
         node.append(label);
         filtersElement.appendChild(node)
-        /*
-                    <div class="filter">
-                            <input type="checkbox" name="" id="">
-                            <label for="">test</label>
-                        </div>
-        */
     })
+})
+submitFiltersBtn.addEventListener('click', () => {
+    filtersContainer.hidden = true;
+})
+//#endregion
 
-    filtersContainer.style.display = "block"
-})
-submitFilters.addEventListener("click", () => {
-    filtersContainer.style.display = "none"
-})
+//#region Define OpenLayers Styles
+
+//#endregion
+
+//#region Main Loop
+async function run() {
+    //#region Create OpenLayers Map
+    const mapDefaults = {
+        center: [-1706000, 4606000],
+        zoom: 6.2
+    };
+    const mainView = new ol.View({
+        center: mapDefaults.center,
+        zoom: mapDefaults.zoom
+    });
+    const layers = [];
+    const map = new ol.Map({
+        target: targetElement,
+        layers: layers,
+        view: mainView
+    });
+
+    //OpenStreetMap Layer
+    const osmLayer = new ol.layer.Tile({
+        source: new ol.source.OSM(),
+        zIndex: 0
+    });
+    map.addLayer(osmLayer);
+
+    const polygonLayer = new ol.layer.Vector({
+        title: "hull",
+        source: new ol.source.Vector({}),
+        zIndex: 1
+    });
+    map.addLayer(polygonLayer);
+
+    const stadiumsSource = new ol.source.Vector({});
+    const stadiumsLayer = new ol.layer.Vector({
+        zIndex: 3,
+        source: stadiumsSource,
+        style: new ol.style.Style({
+            image: new ol.style.Icon({
+                src: "./img/estadio-96.png",
+                scale: 0.3
+            })
+        })
+    });
+    map.addLayer(stadiumsLayer);
+
+    const poisSource = new ol.source.Vector({});
+    const poisLayer = new ol.layer.Vector({
+        zIndex: 2,
+        source: poisSource,
+        //todo criar estilos para pois e estádios, em vez de seres criados aqui, reusar estilos
+        style: new ol.style.Style({
+            image: new ol.style.Circle({
+                radius: 5,
+                fill: new ol.style.Fill({
+                    color: 'red'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: 'black',
+                    width: 1
+                })
+            })
+        })
+    })
+    map.addLayer(poisLayer);
+
+    mapContext.view = mainView;
+    mapContext.layers = layers;
+    mapContext.map = map;
+    //#endregion
+
+    //#region Create Popup
+    const popup = new ol.Overlay({
+        element: popupElement,
+        positioning: 'bottom-center',
+        stopEvent: false,
+    })
+    mapContext.map.addOverlay(popup);
+
+    function disposePopover() {
+        if (!popupElement) return;
+        popupElement.setAttribute("hidden", "hidden")
+        popupElement.innerText = "";
+    }
+    //#endregion
+
+    //Get Stadiums
+    mapData.stadiums = await getStadiumData();
+    //Get Points of Interest
+    mapData.pois = await getPointsOfInterestData();
+
+    //#region Populate Stadiums Select
+    Object.values(mapData.stadiums.features).forEach(stadium => {
+        const name = stadium.properties.nome;
+        const position = stadium.geometry.coordinates;
+        const node = document.createElement('option');
+        node.value = position;
+        node.innerText = name;
+
+        stadiumSelect.appendChild(node);
+    })
+    const blankOption = document.createElement('option');
+    blankOption.selected = true;
+    blankOption.disabled = true;
+    blankOption.textContent = "Escolha um estádio";
+    stadiumSelect.insertBefore(blankOption, stadiumSelect.firstChild);
+    //#endregion
+
+    //#region On Stadium Option Select
+    stadiumSelect.addEventListener('change', async () => {
+
+        //#region Zoom To Selected Stadium Position
+        const coordinates = stadiumSelect.value.split(",").map(str => parseFloat(str));
+        mapContext.view.animate({
+            center: coordinates,
+            duration: 1000,
+            zoom: 16,
+            easing: ol.easing.easeOut
+        })
+        //#endregion
+
+        //update stadium name on the sidebar
+        stadiumHeading.innerHTML = stadiumSelect.selectedOptions[0].innerText;
+
+        //#region Create Polygon Shape
+        const source = pgDataProjection;
+        const destination = turfProjection;
+        const projectedCoordinates = ol.proj.transform(coordinates, source, destination);
+
+        const lon = projectedCoordinates[0];
+        const lat = projectedCoordinates[1];
+        const time = 15.0;
+        const color = '000000';
+        let polygonsFeatures;
+        try {
+            polygonsFeatures = await getRoutingPolygon(lon, lat, time, color);
+        } catch (error) {
+            console.log(error);
+            return;
+        }
+        const projectedPolygonsFeatures = geojsonFormat.readFeatures(polygonsFeatures, {
+            dataProjection: turfProjection, //from
+            featureProjection: mapContext.projection  //to
+        });
+        polygonLayer.getSource().clear();
+        polygonLayer.getSource().addFeatures(projectedPolygonsFeatures);
+        stadiumsSource.clear();
+        poisSource.clear();
+
+        map.getView().fit(polygonLayer.getSource().getExtent(), {
+            padding: [100, 100, 100, 20]
+        });
+        //#endregion
+
+        //#region Get Overlapping Points of Interest & Stadiums
+        const firstPolygon = geojsonFormat.writeFeaturesObject(projectedPolygonsFeatures).features[0];
+
+        const stadiumInPolygon = turf.pointsWithinPolygon(
+            geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(mapData.stadiums)),
+            firstPolygon
+        );
+        stadiumsSource.addFeatures(geojsonFormat.readFeatures(stadiumInPolygon));
+
+        const poisInPolygon = turf.pointsWithinPolygon(
+            geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(mapData.pois)),
+            firstPolygon
+        );
+        poisSource.addFeatures(geojsonFormat.readFeatures(poisInPolygon));
+        //#endregion
+
+        //#region Populate Sidebar w/ PoIs' Information & Update Popup on PoI Hover
+        poiContainer.innerHTML = "";
+        poisCache = {};
+        filters.clear();
+        console.log(poisInPolygon.features);
+        poisInPolygon.features.forEach(poi => {
+            poisCache[poi.id] = poi;
+            filters.add(poi.properties.categoria);
+
+            const node = document.createElement('div');
+            node.classList.add('poi');
+            node.setAttribute("data-id", poi.id);
+            const title = document.createElement('h4');
+            title.classList.add('poi-titulo');
+            title.innerText = poi.properties.nome;
+            const category = document.createElement('p');
+            category.innerText = poi.properties.categoria;
+            category.classList.add('poi-categoria');
+
+            node.appendChild(title);
+            node.appendChild(category);
+            poiContainer.appendChild(node);
+
+            node.addEventListener('mouseenter', () => {
+                const feature = poisCache[node.dataset.id];
+                const coordinates = feature.geometry.coordinates;
+                popup.setPosition(coordinates);
+                popupElement.removeAttribute("hidden");
+                popupElement.innerText = feature.properties.nome;
+            })
+            node.addEventListener('mouseleave', disposePopover);
+        })
+        //#endregion
+    })
+    //#endregion
+}
+
+run();
+//#endregion
 
 //Estilos
 const mainFill = new ol.style.Fill({

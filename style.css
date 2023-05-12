@@ -118,7 +118,7 @@ option {
 	display: grid;
 	grid-template-columns: 1fr 1fr 1fr;
 	max-height: 80px;
-	overflow-y: scroll;
+	overflow-y: auto;
 	gap: 0.5em;
 	margin-bottom: 0.5em;
 }
@@ -134,7 +134,6 @@ option {
 }
 
 #poi-filters-container {
-	display: none;
 	position: absolute;
 	top: 50%;
 	left: 50%;
