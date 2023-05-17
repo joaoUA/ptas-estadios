@@ -44,7 +44,7 @@ option {
 }
 
 .hidden {
-	display: none;
+	visibility: hidden;
 }
 
 #popup {

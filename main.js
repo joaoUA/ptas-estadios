@@ -36,6 +36,51 @@ async function fetchData(url) {
 }
 //#endregion
 
+//#region Create Popup
+const popup = new ol.Overlay({
+    element: popupElement,
+    positioning: 'bottom-center',
+    stopEvent: false
+})
+
+function disposePopover() {
+    if (!popupElement) return;
+    popupElement.setAttribute("hidden", "hidden")
+    popupElement.innerText = "";
+}
+//#endregion
+
+//#region Open Layers Styles
+const poiFill = new ol.style.Fill({
+    color: 'red'
+})
+const poiStroke = new ol.style.Stroke({
+    color: 'black',
+    width: 1
+})
+const poiImage = new ol.style.Circle({
+    radius: 5,
+    fill: poiFill,
+    stroke: poiStroke
+})
+
+const poiStyle = new ol.style.Style({
+    image: poiImage
+})
+
+const poiHiddenStyle = new ol.style.Style({})
+
+const stadiumIcon = new ol.style.Icon({
+    src: "./img/estadio-96.png",
+    scale: 0.3
+})
+
+const stadiumStyle = new ol.style.Style({
+    image: stadiumIcon
+})
+
+//#endregion
+
 //#region Fetch Stadium Data
 const stadiumDataUrl = 'http://localhost/ptas_test/php/get_stadiums.php';
 async function getStadiumData() {
@@ -76,10 +121,12 @@ async function getRoutingPolygon(lon, lat, time, color) {
 toggleFiltersBtn.addEventListener('click', () => {
     if (filters.size === 0)
         return;
+
     filtersContainer.hidden = !filtersContainer.hidden;
 
     if (filtersContainer.hidden)
         return;
+    filtersElement.innerHTML = "";
     filters.forEach(filter => {
         const node = document.createElement("div");
         node.classList.add("filter")
@@ -96,11 +143,75 @@ toggleFiltersBtn.addEventListener('click', () => {
 })
 submitFiltersBtn.addEventListener('click', () => {
     filtersContainer.hidden = true;
+
+    const filtersChecked = []
+
+    Array.from(filtersElement.children).forEach(filter => {
+        const checkbox = filter.querySelector('input[type="checkbox"]');
+        const label = filter.querySelector('label');
+
+        if (checkbox.checked)
+            filtersChecked.push(label.innerText)
+    })
+    const poisLayer = mapContext.map.getLayers().getArray().filter(layer => layer.getProperties().name === 'pois')[0];
+    if (poisLayer === null || poisLayer === undefined)
+        return;
+
+    poisLayer.getSource().getFeatures().forEach(feat => {
+        const featId = feat.id_;
+        if (filtersChecked.includes(feat.getProperties().categoria)) {
+            feat.setStyle(poiStyle)
+            poisCache[parseInt(featId)].hidden = false;
+            return;
+        }
+        feat.setStyle(poiHiddenStyle)
+        poisCache[parseInt(featId)].hidden = true;
+    });
+
+    poiContainer.innerHTML = "";
+
+    Object.keys(poisCache)
+        .filter(poiId => !poisCache[poiId].hidden)
+        .forEach(poiId => {
+            const poi = poisCache[poiId].poi;
+
+            const node = document.createElement('div');
+            node.classList.add('poi');
+            node.setAttribute("data-id", poi.id);
+
+            console.log(poi.properties);
+
+            const title = document.createElement('h4');
+            title.classList.add('poi-titulo');
+            title.innerText = poi.properties.nome;
+
+            const category = document.createElement('p');
+            category.innerText = poi.properties.categoria;
+            category.classList.add('poi-categoria');
+
+            node.appendChild(title);
+            node.appendChild(category);
+            poiContainer.appendChild(node);
+
+            node.addEventListener('mouseenter', () => {
+                const feature = poisCache[node.dataset.id].poi;
+                const coordinates = feature.geometry.coordinates;
+                popup.setPosition(coordinates);
+                popupElement.removeAttribute("hidden");
+                popupElement.innerText = feature.properties.nome;
+            })
+            node.addEventListener('mouseleave', disposePopover);
+
+        })
+
+    //todo update sidebar list
+    //updateSideBarPoIs(poisLayer.getSource().getFeatures())
 })
 //#endregion
 
-//#region Define OpenLayers Styles
-
+//#region Set PoIs On Sidebar
+function updateSideBarPoIs(feats) {
+}
 //#endregion
 
 //#region Main Loop
@@ -127,6 +238,7 @@ async function run() {
         zIndex: 0
     });
     map.addLayer(osmLayer);
+    osmLayer.setProperties({ "name": "osm" });
 
     const polygonLayer = new ol.layer.Vector({
         title: "hull",
@@ -134,59 +246,32 @@ async function run() {
         zIndex: 1
     });
     map.addLayer(polygonLayer);
+    polygonLayer.setProperties({ "name": "polygon" })
 
     const stadiumsSource = new ol.source.Vector({});
     const stadiumsLayer = new ol.layer.Vector({
         zIndex: 3,
         source: stadiumsSource,
-        style: new ol.style.Style({
-            image: new ol.style.Icon({
-                src: "./img/estadio-96.png",
-                scale: 0.3
-            })
-        })
+        style: stadiumStyle
     });
     map.addLayer(stadiumsLayer);
+    stadiumsLayer.setProperties({ "name": "stadiums" })
 
     const poisSource = new ol.source.Vector({});
     const poisLayer = new ol.layer.Vector({
         zIndex: 2,
         source: poisSource,
-        //todo criar estilos para pois e estádios, em vez de seres criados aqui, reusar estilos
-        style: new ol.style.Style({
-            image: new ol.style.Circle({
-                radius: 5,
-                fill: new ol.style.Fill({
-                    color: 'red'
-                }),
-                stroke: new ol.style.Stroke({
-                    color: 'black',
-                    width: 1
-                })
-            })
-        })
+        style: poiStyle,
+        name: 'pois'
     })
     map.addLayer(poisLayer);
 
     mapContext.view = mainView;
     mapContext.layers = layers;
     mapContext.map = map;
-    //#endregion
-
-    //#region Create Popup
-    const popup = new ol.Overlay({
-        element: popupElement,
-        positioning: 'bottom-center',
-        stopEvent: false,
-    })
     mapContext.map.addOverlay(popup);
-
-    function disposePopover() {
-        if (!popupElement) return;
-        popupElement.setAttribute("hidden", "hidden")
-        popupElement.innerText = "";
-    }
     //#endregion
+
 
     //Get Stadiums
     mapData.stadiums = await getStadiumData();
@@ -209,6 +294,8 @@ async function run() {
     blankOption.textContent = "Escolha um estádio";
     stadiumSelect.insertBefore(blankOption, stadiumSelect.firstChild);
     //#endregion
+
+    stadiumsSource.addFeatures(geojsonFormat.readFeatures(mapData.stadiums));
 
     //#region On Stadium Option Select
     stadiumSelect.addEventListener('change', async () => {
@@ -273,12 +360,11 @@ async function run() {
         //#endregion
 
         //#region Populate Sidebar w/ PoIs' Information & Update Popup on PoI Hover
-        poiContainer.innerHTML = "";
         poisCache = {};
         filters.clear();
-        console.log(poisInPolygon.features);
+        poiContainer.innerHTML = "";
         poisInPolygon.features.forEach(poi => {
-            poisCache[poi.id] = poi;
+            poisCache[poi.id] = { "poi": poi, "hidden": false };
             filters.add(poi.properties.categoria);
 
             const node = document.createElement('div');
@@ -296,7 +382,7 @@ async function run() {
             poiContainer.appendChild(node);
 
             node.addEventListener('mouseenter', () => {
-                const feature = poisCache[node.dataset.id];
+                const feature = poisCache[node.dataset.id].poi;
                 const coordinates = feature.geometry.coordinates;
                 popup.setPosition(coordinates);
                 popupElement.removeAttribute("hidden");
@@ -307,6 +393,8 @@ async function run() {
         //#endregion
     })
     //#endregion
+
+
 }
 
 run();
