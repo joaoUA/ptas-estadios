@@ -13,7 +13,7 @@
     <!--Turf-->
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css">
     <script src="./main.js" defer></script>
 </head>
 
@@ -39,11 +39,16 @@
 
                 </div>
             </div>
+            <div id="starting-point-container">
+                <label for="startingAddress">Ponto de Partida:</label>
+                <input type="text" name="startingAddress" id="inputStartingAddress">
+                <input type="button" id="btnCalculateRoute" value="Direções">
+            </div>
         </section>
         <section id="map-container">
             <div class="map" id="map">
-                <!--<div class="popup">Text</div>-->
-                <div id="popup" hidden="hidden">Text</div>
+                <div id="popup" hidden="hidden">Popup</div>
+                <div id="address-popup" hidden="hidden">Address</div>
             </div>
         </section>
     </main>

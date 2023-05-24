@@ -18,15 +18,21 @@ main {
 
 select {
 	display: block;
-	margin: 0.2em;
 }
 
 #config-container {
+	max-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	gap: 0.2em;
 	padding: 1em;
 	background-color: white;
 }
 
 .config-group {
+	flex-basis: fit-content;
+	flex-grow: 0;
+	flex-shrink: 0;
 	padding: 0.5em 0.5em;
 	border: 1px solid grey;
 	border-width: 1px 0 1px 0;
@@ -71,8 +77,10 @@ option {
 }
 
 #poi-results {
-	padding: 1em 0;
-	height: calc(100vh - 200px);
+	flex-basis: fit-content;
+	flex-grow: 1;
+	padding: 0.5em 0;
+	overflow-y: hidden;
 }
 #estadio {
 	margin-bottom: 0.2em;
@@ -143,4 +151,33 @@ option {
 	border: 1px solid black;
 	border-radius: 0.2em;
 	padding: 0.5em;
+}
+
+#address-popup {
+	z-index: 2;
+	background-color: white;
+	border: 1px solid black;
+	border-radius: 0.5em;
+	padding: 0.3em 0.6em;
+	margin-bottom: 1em;
+}
+#address-popup::after {
+	content: "";
+	position: absolute;
+	bottom: 6px;
+	left: 50%;
+	margin-left: -10px;
+	border-width: 10px 10px 0 10px;
+	border-style: solid;
+	border-color: black transparent transparent transparent;
+}
+
+#address-popup:hover {
+	cursor: pointer;
+}
+
+#starting-point-container {
+	flex-basis: fit-content;
+	flex-grow: 0;
+	flex-shrink: 0;
 }

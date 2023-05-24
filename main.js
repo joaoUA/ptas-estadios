@@ -3,19 +3,24 @@
 const targetElement = document.getElementById('map');
 const stadiumSelect = document.getElementById('stadium-select');
 const popupElement = document.getElementById('popup');
+const addressPopupElement = document.getElementById('address-popup');
 const stadiumHeading = document.getElementById('estadio-title');
 const poiContainer = document.getElementById('poi-container');
 const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
 const filtersContainer = document.getElementById('poi-filters-container');
 const filtersElement = document.getElementById('poi-filters');
 const submitFiltersBtn = document.getElementById('submit-filters-btn');
+const startingPointInput = document.getElementById('inputStartingAddress');
+const calculateRouteBtn = document.getElementById('btnCalculateRoute');
 //#endregion
 
 //#region Globals
+const geocodingAPI = '5b3ce3597851110001cf6248effbb3f392b94119b82ddf1d0a903043'
 const pgDataProjection = 'EPSG:3857';
 const olMapProjection = 'EPSG:3857';
 const turfProjection = 'EPSG:4326';
 const geojsonFormat = new ol.format.GeoJSON();
+const defaultSelectValue = "Escolha um estádio";
 
 const mapContext = {
     view: null,
@@ -43,10 +48,10 @@ const popup = new ol.Overlay({
     stopEvent: false
 })
 
-function disposePopover() {
-    if (!popupElement) return;
-    popupElement.setAttribute("hidden", "hidden")
-    popupElement.innerText = "";
+function disposePopover(popup) {
+    if (!popup) return;
+    popup.setAttribute("hidden", "hidden")
+    popup.innerText = "";
 }
 //#endregion
 
@@ -115,6 +120,8 @@ async function getRoutingPolygon(lon, lat, time, color) {
         `https://routing.gis4cloud.pt/isochrone?json={"locations":[{"lat":${lat},"lon":${lon}}],"costing":"pedestrian","polygons":true,"contours":[{"time":15.0,"color":"000000"}]}&id=hull inicial`;
     return await fetchData(url);
 }
+
+
 //#endregion
 
 //#region Populate Filters on Sidebar
@@ -200,7 +207,7 @@ submitFiltersBtn.addEventListener('click', () => {
                 popupElement.removeAttribute("hidden");
                 popupElement.innerText = feature.properties.nome;
             })
-            node.addEventListener('mouseleave', disposePopover);
+            node.addEventListener('mouseleave', () => { disposePopover(popupElement) });
 
         })
 
@@ -209,9 +216,144 @@ submitFiltersBtn.addEventListener('click', () => {
 })
 //#endregion
 
-//#region Set PoIs On Sidebar
-function updateSideBarPoIs(feats) {
+//#region Get Coordinates from address
+async function getAddressCoordinates(address) {
+    const baseURL = 'https://api.openrouteservice.org/geocode/search';
+
+    const url = new URL(baseURL);
+    url.searchParams.append('api_key', geocodingAPI);
+    url.searchParams.append('text', address);
+
+    try {
+        return await fetchData(url);
+    } catch (error) {
+        console.log(error);
+        return null;
+    }
 }
+
+const addressPopup = new ol.Overlay({
+    element: addressPopupElement,
+    positioning: 'bottom-center',
+    stopEvent: false
+})
+/*
+calculateRouteBtn.addEventListener('click', async () => {
+    const startingPointText = startingPointInput.value.trim();
+
+    if (!startingPointText || stadiumSelect.value === defaultSelectValue)
+        return;
+
+    const result = await getAddressCoordinates(startingPointText);
+
+    console.log(result);
+
+    const projectedAddresses = geojsonFormat.readFeatures(addresses, {
+        dataProjection: 'EPSG:4326',
+        featureProjection: 'EPSG:3857'
+    });
+    console.log(projectedAddresses);
+
+    const startingPoint = result.features.filter(addr => addr.properties.country === 'Portugal')[0];
+    console.log(startingPoint);
+
+    addressPopup.setPosition(startingPoint.geometry.coordinates);
+    addressPopupElement.removeAttribute("hidden");
+    addressPopupElement.innerText = startingPointText;
+
+    addresses.filter(address => address.properties.country === "Portugal").forEach(address => {
+        console.log(`Address: ${address.properties.label}\nCoords: ${address.geometry.coordinates}`);
+    })
+
+    const startingPoint = addresses.filter(address => address.properties.country === "Portugal")[0];
+    if (!startingPoint) {
+        console.log("Invalid starting point!");
+        return;
+    }
+
+    console.log(startingPoint);
+
+    popup.setPosition(startingPoint.geometry.coordinates);
+    popupElement.removeAttribute("hidden");
+    popupElement.innerText = startingPointText;
+
+    addressPopup.setPosition(startingPoint.geometry.coordinates);
+    addressPopupElement.removeAttribute("hidden");
+    addressPopupElement.innerText = startingPointText;
+});
+*/
+
+//#endregion
+
+//#region Get Optimized Route
+async function getOptimizedRoute(from, to) {
+    console.log(`From: ${from[0]} ; ${from[1]}`)
+    console.log(`To: ${to[0]} ; ${to[1]}`)
+
+    const fromCoords = turf.toWgs84(turf.point(from)).geometry.coordinates;
+    const toCoords = turf.toWgs84(turf.point(to)).geometry.coordinates;
+
+    console.log(fromCoords);
+    console.log(toCoords);
+
+    const base = `https://routing.gis4cloud.pt/route?json={"locations":[{"lat":${fromCoords[1]},"lon":${fromCoords[0]}\},{"lat":${toCoords[1]},"lon":${toCoords[0]}\}],"costing":"auto","costing_options":{"auto":{"country_crossing_penalty":2000.0}},"units":"kilometers%20","id":"my_work_route"}`;
+    const data = await fetchData(base);
+
+    const shape = data.trip.legs[0].shape
+    const decoded = decode(shape);
+
+    return decoded
+}
+
+const decode = function (str, precision) {
+    var index = 0,
+        lat = 0,
+        lng = 0,
+        coordinates = [],
+        shift = 0,
+        result = 0,
+        byte = null,
+        latitude_change,
+        longitude_change,
+        factor = Math.pow(10, precision || 6);
+
+    // Coordinates have variable length when encoded, so just keep
+    // track of whether we've hit the end of the string. In each
+    // loop iteration, a single coordinate is decoded.
+    while (index < str.length) {
+
+        // Reset shift, result, and byte
+        byte = null;
+        shift = 0;
+        result = 0;
+
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+        shift = result = 0;
+
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+        lat += latitude_change;
+        lng += longitude_change;
+
+        coordinates.push([lat / factor, lng / factor]);
+    }
+
+    return coordinates;
+};
+
 //#endregion
 
 //#region Main Loop
@@ -266,10 +408,20 @@ async function run() {
     })
     map.addLayer(poisLayer);
 
+    const addrSource = new ol.source.Vector({});
+    const addrLayer = new ol.layer.Vector({
+        zIndex: 4,
+        source: addrSource,
+        style: poiStyle,
+        name: 'addr'
+    })
+    map.addLayer(addrLayer)
+
     mapContext.view = mainView;
     mapContext.layers = layers;
     mapContext.map = map;
     mapContext.map.addOverlay(popup);
+    mapContext.map.addOverlay(addressPopup);
     //#endregion
 
 
@@ -291,7 +443,7 @@ async function run() {
     const blankOption = document.createElement('option');
     blankOption.selected = true;
     blankOption.disabled = true;
-    blankOption.textContent = "Escolha um estádio";
+    blankOption.textContent = defaultSelectValue;
     stadiumSelect.insertBefore(blankOption, stadiumSelect.firstChild);
     //#endregion
 
@@ -388,12 +540,90 @@ async function run() {
                 popupElement.removeAttribute("hidden");
                 popupElement.innerText = feature.properties.nome;
             })
-            node.addEventListener('mouseleave', disposePopover);
+            node.addEventListener('mouseleave', () => { disposePopover(popupElement) });
         })
         //#endregion
+
+
     })
     //#endregion
 
+    //#region On Get Directions Button Click
+    calculateRouteBtn.addEventListener('click', async () => {
+        addrSource.clear();
+        const startingPointText = startingPointInput.value.trim();
+        if (!startingPointText || stadiumSelect.value === defaultSelectValue)
+            return;
+        const result = await getAddressCoordinates(startingPointText);
+
+        const feats = result.features.map(feat => {
+            return new ol.Feature({
+                geometry: new ol.geom.Point(feat.geometry.coordinates).transform(turfProjection, mapContext.projection),
+                label: feat.properties.label
+            })
+        })
+        addrSource.addFeatures(feats);
+        const firstAddressFound = feats[0];
+        addressPopup.setPosition(firstAddressFound.values_.geometry.flatCoordinates);
+        addressPopupElement.removeAttribute("hidden");
+        addressPopupElement.innerText = firstAddressFound.values_.label;
+
+        const from = firstAddressFound.values_.geometry.flatCoordinates
+        const to = stadiumSelect.value.split(",").map(str => parseFloat(str));;
+
+        const decodedShape = await getOptimizedRoute(from, to);
+        /*
+        const marksSource = new ol.source.Vector({})
+        decodedShape.forEach(position => {
+            const feat = new ol.Feature({
+                geometry: new ol.geom.Point(position),
+                name: 'lineMark'
+            });
+            marksSource.addFeature(feat);
+        })
+
+        console.log(marksSource);
+        const projectedLineMarks = geojsonFormat.readFeatures(marksSource, {
+            dataProjection: turfProjection, //from
+            featureProjection: mapContext.projection  //to
+        });
+        console.log(projectedLineMarks);
+
+        const shapeSource = new ol.source.Vector({})
+        const shapeLayer = new ol.layer.Vector({
+            zIndex: 1,
+            source: shapeSource,
+            name: 'shape',
+            style: new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: 'red'
+                })
+            })
+        })
+
+        shapeSource.addFeatures(geojsonFormat.readFeatures(projectedLineMarks));
+
+        map.addLayer(shapeLayer);
+        */
+        /*const turfLine = turf.lineString(decodedShape);
+        
+
+        const projectedLineString = geojsonFormat.readFeatures(turfLine, {
+            dataProjection: turfProjection, //from
+            featureProjection: mapContext.projection  //to
+        });
+
+        shapeLayer.getSource().clear();
+        shapeLayer.getSource().addFeatures(projectedLineString);
+
+        map.addLayer(shapeLayer);
+
+        console.log(shapeLayer);
+
+        console.log(shapeLayer.getSource().getFeatures())*/
+
+    });
+    //#endregion
 
 }
 
