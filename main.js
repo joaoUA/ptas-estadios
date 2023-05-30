@@ -87,7 +87,7 @@ const stadiumStyle = new ol.style.Style({
 //#endregion
 
 //#region Fetch Stadium Data
-const stadiumDataUrl = 'http://localhost/ptas_test/php/get_stadiums.php';
+const stadiumDataUrl = 'http://localhost/ptas-estadios/php/get_stadiums.php';
 async function getStadiumData() {
     try {
         const response = await fetchData(stadiumDataUrl);
@@ -101,7 +101,7 @@ async function getStadiumData() {
 //#endregion
 
 //#region Fetch Points of Interest Data
-const poisDataUrl = 'http://localhost/ptas_test/php/get_pointsofinterest.php';
+const poisDataUrl = 'http://localhost/ptas-estadios/php/get_pointsofinterest.php';
 async function getPointsOfInterestData() {
     try {
         const response = await fetchData(poisDataUrl);
@@ -237,51 +237,7 @@ const addressPopup = new ol.Overlay({
     positioning: 'bottom-center',
     stopEvent: false
 })
-/*
-calculateRouteBtn.addEventListener('click', async () => {
-    const startingPointText = startingPointInput.value.trim();
 
-    if (!startingPointText || stadiumSelect.value === defaultSelectValue)
-        return;
-
-    const result = await getAddressCoordinates(startingPointText);
-
-    console.log(result);
-
-    const projectedAddresses = geojsonFormat.readFeatures(addresses, {
-        dataProjection: 'EPSG:4326',
-        featureProjection: 'EPSG:3857'
-    });
-    console.log(projectedAddresses);
-
-    const startingPoint = result.features.filter(addr => addr.properties.country === 'Portugal')[0];
-    console.log(startingPoint);
-
-    addressPopup.setPosition(startingPoint.geometry.coordinates);
-    addressPopupElement.removeAttribute("hidden");
-    addressPopupElement.innerText = startingPointText;
-
-    addresses.filter(address => address.properties.country === "Portugal").forEach(address => {
-        console.log(`Address: ${address.properties.label}\nCoords: ${address.geometry.coordinates}`);
-    })
-
-    const startingPoint = addresses.filter(address => address.properties.country === "Portugal")[0];
-    if (!startingPoint) {
-        console.log("Invalid starting point!");
-        return;
-    }
-
-    console.log(startingPoint);
-
-    popup.setPosition(startingPoint.geometry.coordinates);
-    popupElement.removeAttribute("hidden");
-    popupElement.innerText = startingPointText;
-
-    addressPopup.setPosition(startingPoint.geometry.coordinates);
-    addressPopupElement.removeAttribute("hidden");
-    addressPopupElement.innerText = startingPointText;
-});
-*/
 
 //#endregion
 
@@ -392,7 +348,7 @@ async function run() {
 
     const stadiumsSource = new ol.source.Vector({});
     const stadiumsLayer = new ol.layer.Vector({
-        zIndex: 3,
+        zIndex: 4,
         source: stadiumsSource,
         style: stadiumStyle
     });
@@ -401,7 +357,7 @@ async function run() {
 
     const poisSource = new ol.source.Vector({});
     const poisLayer = new ol.layer.Vector({
-        zIndex: 2,
+        zIndex: 3,
         source: poisSource,
         style: poiStyle,
         name: 'pois'
@@ -410,12 +366,26 @@ async function run() {
 
     const addrSource = new ol.source.Vector({});
     const addrLayer = new ol.layer.Vector({
-        zIndex: 4,
+        zIndex: 5,
         source: addrSource,
         style: poiStyle,
         name: 'addr'
-    })
+    });
     map.addLayer(addrLayer)
+
+    const routeSource = new ol.source.Vector({});
+    const routeLayer = new ol.layer.Vector({
+        zIndex: 2,
+        source: routeSource,
+        style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'purple', // Set the stroke color
+                width: 5, // Set the stroke width
+                //lineDash: [5, 5] // Set the line dash pattern (optional)
+            })
+        })
+    });
+    map.addLayer(routeLayer);
 
     mapContext.view = mainView;
     mapContext.layers = layers;
@@ -446,7 +416,7 @@ async function run() {
     blankOption.textContent = defaultSelectValue;
     stadiumSelect.insertBefore(blankOption, stadiumSelect.firstChild);
     //#endregion
-
+    console.log(mapData);
     stadiumsSource.addFeatures(geojsonFormat.readFeatures(mapData.stadiums));
 
     //#region On Stadium Option Select
@@ -551,6 +521,7 @@ async function run() {
     //#region On Get Directions Button Click
     calculateRouteBtn.addEventListener('click', async () => {
         addrSource.clear();
+        routeSource.clear();
         const startingPointText = startingPointInput.value.trim();
         if (!startingPointText || stadiumSelect.value === defaultSelectValue)
             return;
@@ -572,56 +543,21 @@ async function run() {
         const to = stadiumSelect.value.split(",").map(str => parseFloat(str));;
 
         const decodedShape = await getOptimizedRoute(from, to);
-        /*
-        const marksSource = new ol.source.Vector({})
-        decodedShape.forEach(position => {
-            const feat = new ol.Feature({
-                geometry: new ol.geom.Point(position),
-                name: 'lineMark'
-            });
-            marksSource.addFeature(feat);
+
+        const shapePoints = decodedShape.map(coord => {
+            return [coord[1], coord[0]]
         })
 
-        console.log(marksSource);
-        const projectedLineMarks = geojsonFormat.readFeatures(marksSource, {
-            dataProjection: turfProjection, //from
-            featureProjection: mapContext.projection  //to
-        });
-        console.log(projectedLineMarks);
-
-        const shapeSource = new ol.source.Vector({})
-        const shapeLayer = new ol.layer.Vector({
-            zIndex: 1,
-            source: shapeSource,
-            name: 'shape',
-            style: new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'red'
-                })
-            })
-        })
-
-        shapeSource.addFeatures(geojsonFormat.readFeatures(projectedLineMarks));
-
-        map.addLayer(shapeLayer);
-        */
-        /*const turfLine = turf.lineString(decodedShape);
-        
-
-        const projectedLineString = geojsonFormat.readFeatures(turfLine, {
-            dataProjection: turfProjection, //from
-            featureProjection: mapContext.projection  //to
+        const transformedPoints = shapePoints.map(coord => {
+            return ol.proj.transform(coord, turfProjection, mapContext.projection);
         });
 
-        shapeLayer.getSource().clear();
-        shapeLayer.getSource().addFeatures(projectedLineString);
+        const olLineString = new ol.geom.LineString(transformedPoints);
+        routeSource.addFeature(new ol.Feature({ geometry: olLineString }));
 
-        map.addLayer(shapeLayer);
-
-        console.log(shapeLayer);
-
-        console.log(shapeLayer.getSource().getFeatures())*/
-
+        map.getView().fit(routeSource.getExtent(), {
+            padding: [100, 100, 100, 20]
+        });
     });
     //#endregion
 
