@@ -125,7 +125,7 @@ option {
 #poi-filters {
 	display: grid;
 	grid-template-columns: 1fr 1fr 1fr;
-	max-height: 80px;
+	max-height: 300px;
 	overflow-y: auto;
 	gap: 0.5em;
 	margin-bottom: 0.5em;

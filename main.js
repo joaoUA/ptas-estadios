@@ -10,6 +10,8 @@ const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
 const filtersContainer = document.getElementById('poi-filters-container');
 const filtersElement = document.getElementById('poi-filters');
 const submitFiltersBtn = document.getElementById('submit-filters-btn');
+const resetFiltersBtn = document.getElementById('reset-filters-btn');
+const clearFiltersBtn = document.getElementById('clear-filters-btn');
 const startingPointInput = document.getElementById('inputStartingAddress');
 const calculateRouteBtn = document.getElementById('btnCalculateRoute');
 //#endregion
@@ -214,6 +216,14 @@ submitFiltersBtn.addEventListener('click', () => {
     //todo update sidebar list
     //updateSideBarPoIs(poisLayer.getSource().getFeatures())
 })
+resetFiltersBtn.addEventListener('click', () => {
+    const filtersCheckboxes = Array.from(filtersElement.getElementsByTagName('input'));
+    filtersCheckboxes.forEach(checkbox => checkbox.checked = true);
+})
+clearFiltersBtn.addEventListener('click', () => {
+    const filtersCheckboxes = Array.from(filtersElement.getElementsByTagName('input'));
+    filtersCheckboxes.forEach(checkbox => checkbox.checked = false);
+})
 //#endregion
 
 //#region Get Coordinates from address
@@ -332,8 +342,9 @@ async function run() {
 
     //OpenStreetMap Layer
     const osmLayer = new ol.layer.Tile({
-        source: new ol.source.OSM(),
-        zIndex: 0
+        source: new ol.source.Stamen({
+            layer: 'toner-lite'
+        })
     });
     map.addLayer(osmLayer);
     osmLayer.setProperties({ "name": "osm" });
@@ -459,6 +470,7 @@ async function run() {
         polygonLayer.getSource().addFeatures(projectedPolygonsFeatures);
         stadiumsSource.clear();
         poisSource.clear();
+        routeSource.clear();
 
         map.getView().fit(polygonLayer.getSource().getExtent(), {
             padding: [100, 100, 100, 20]
@@ -553,7 +565,32 @@ async function run() {
         });
 
         const olLineString = new ol.geom.LineString(transformedPoints);
-        routeSource.addFeature(new ol.Feature({ geometry: olLineString }));
+        const lieStringFeature = new ol.Feature({ geometry: olLineString })
+        routeSource.addFeature(lieStringFeature);
+
+        const turfLineString = turf.lineString(decodedShape)
+        const buffered = turf.buffer(turfLineString, 1, { units: 'kilometers' });
+        const ordedBuffer = buffered.map(coord => {
+            return [coord[1], coord[0]]
+        })
+
+        //todo - poligono a partir da rota
+        //todo comparar com pontos de interesses dentro do poligono
+
+
+
+        const transformedBuffer = ordedBuffer.map(coord => {
+            return ol.proj.transform(coord, turfProjection, mapContext.projection);
+        });
+
+        const olBuffer = new ol.geom.Polygon(transformedBuffer);
+        const a = new ol.feature.Polygon()
+
+
+
+
+
+
 
         map.getView().fit(routeSource.getExtent(), {
             padding: [100, 100, 100, 20]
