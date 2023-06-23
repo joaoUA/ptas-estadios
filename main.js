@@ -546,55 +546,51 @@ async function run() {
             })
         })
         addrSource.addFeatures(feats);
-        const firstAddressFound = feats[0];
-        addressPopup.setPosition(firstAddressFound.values_.geometry.flatCoordinates);
-        addressPopupElement.removeAttribute("hidden");
-        addressPopupElement.innerText = firstAddressFound.values_.label;
 
-        const from = firstAddressFound.values_.geometry.flatCoordinates
-        const to = stadiumSelect.value.split(",").map(str => parseFloat(str));;
+        const startingPoints = feats;
+        const startingPointsContainer = document.getElementById('starting-points-container');
+        startingPoints.forEach(start => {
+            const node = document.createElement('div');
+            node.classList.add("starting-point");
 
-        const decodedShape = await getOptimizedRoute(from, to);
+            const title = document.createElement('h4');
+            title.innerText = start.values_.label;
 
-        const shapePoints = decodedShape.map(coord => {
-            return [coord[1], coord[0]]
+            node.appendChild(title);
+            startingPointsContainer.appendChild(node);
+
+            node.addEventListener('click', () => {
+                const selectedStartingPoint = start;
+                calculateRoute(selectedStartingPoint,);
+            })
         })
 
-        const transformedPoints = shapePoints.map(coord => {
-            return ol.proj.transform(coord, turfProjection, mapContext.projection);
-        });
+        console.log(feats);
 
-        const olLineString = new ol.geom.LineString(transformedPoints);
-        const lieStringFeature = new ol.Feature({ geometry: olLineString })
-        routeSource.addFeature(lieStringFeature);
+        async function calculateRoute(startingPoint) {
+            addressPopup.setPosition(startingPoint.values_.geometry.flatCoordinates);
+            addressPopupElement.removeAttribute("hidden");
+            addressPopupElement.innerHTML = startingPoint.values_.label;
 
-        const turfLineString = turf.lineString(decodedShape)
-        const buffered = turf.buffer(turfLineString, 1, { units: 'kilometers' });
-        const ordedBuffer = buffered.map(coord => {
-            return [coord[1], coord[0]]
-        })
+            const from = startingPoint.values_.geometry.flatCoordinates;
+            const to = stadiumSelect.value.split(",").map(str => parseFloat(str));
 
-        //todo - poligono a partir da rota
-        //todo comparar com pontos de interesses dentro do poligono
+            const decodedShape = await getOptimizedRoute(from, to);
+            const shapePoints = decodedShape.map(coord => {
+                return [coord[1], coord[0]]
+            })
+            const transformedPoints = shapePoints.map(coord => {
+                return ol.proj.transform(coord, turfProjection, mapContext.projection);
+            });
+            const olLineString = new ol.geom.LineString(transformedPoints);
+            const lieStringFeature = new ol.Feature({ geometry: olLineString })
+            routeSource.clear();
+            routeSource.addFeature(lieStringFeature);
 
-
-
-        const transformedBuffer = ordedBuffer.map(coord => {
-            return ol.proj.transform(coord, turfProjection, mapContext.projection);
-        });
-
-        const olBuffer = new ol.geom.Polygon(transformedBuffer);
-        const a = new ol.feature.Polygon()
-
-
-
-
-
-
-
-        map.getView().fit(routeSource.getExtent(), {
-            padding: [100, 100, 100, 20]
-        });
+            map.getView().fit(routeSource.getExtent(), {
+                padding: [100, 100, 100, 20]
+            });
+        }
     });
     //#endregion
 

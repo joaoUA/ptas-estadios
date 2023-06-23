@@ -176,8 +176,28 @@ option {
 	cursor: pointer;
 }
 
-#starting-point-container {
+#starting-points-container {
 	flex-basis: fit-content;
 	flex-grow: 0;
 	flex-shrink: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	max-height: 300px;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5em;
+}
+#starting-point-form {
+	flex-basis: fit-content;
+	flex-grow: 0;
+	flex-shrink: 0;
+}
+
+.starting-point {
+	border: 1px solid grey;
+	padding: 0.2em 0.5em;
+}
+.starting-point:hover {
+	cursor: pointer;
+	background-color: gray;
 }
