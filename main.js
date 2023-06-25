@@ -2,22 +2,12 @@
 //#region HTML Elements
 const targetElement = document.getElementById('map');
 const stadiumSelect = document.getElementById('stadium-select');
-const popupElement = document.getElementById('popup');
-const addressPopupElement = document.getElementById('address-popup');
+
 const stadiumHeading = document.getElementById('estadio-title');
 const poiContainer = document.getElementById('poi-container');
-const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
-const filtersContainer = document.getElementById('poi-filters-container');
-const filtersElement = document.getElementById('poi-filters');
-const submitFiltersBtn = document.getElementById('submit-filters-btn');
-const resetFiltersBtn = document.getElementById('reset-filters-btn');
-const clearFiltersBtn = document.getElementById('clear-filters-btn');
-const startingPointInput = document.getElementById('inputStartingAddress');
-const calculateRouteBtn = document.getElementById('btnCalculateRoute');
+
 //#endregion
 
-//#region Globals
-const geocodingAPI = '5b3ce3597851110001cf6248effbb3f392b94119b82ddf1d0a903043'
 const pgDataProjection = 'EPSG:3857';
 const olMapProjection = 'EPSG:3857';
 const turfProjection = 'EPSG:4326';
@@ -34,292 +24,17 @@ const mapData = {
     stadiums: null,
     pois: null
 }
-const filters = new Set();
 let poisCache = {};
+const filters = new Set();
 
+//#region Helpers
 async function fetchData(url) {
     const res = await fetch(url, {});
     return await res.json();
 }
-//#endregion
-
-//#region Create Popup
-const popup = new ol.Overlay({
-    element: popupElement,
-    positioning: 'bottom-center',
-    stopEvent: false
-})
-
-function disposePopover(popup) {
-    if (!popup) return;
-    popup.setAttribute("hidden", "hidden")
-    popup.innerText = "";
+function clearPoISidebarList() {
+    poiContainer.innerHTML = '';
 }
-//#endregion
-
-//#region Open Layers Styles
-const poiFill = new ol.style.Fill({
-    color: 'red'
-})
-const poiStroke = new ol.style.Stroke({
-    color: 'black',
-    width: 1
-})
-const poiImage = new ol.style.Circle({
-    radius: 5,
-    fill: poiFill,
-    stroke: poiStroke
-})
-
-const poiStyle = new ol.style.Style({
-    image: poiImage
-})
-
-const poiHiddenStyle = new ol.style.Style({})
-
-const stadiumIcon = new ol.style.Icon({
-    src: "./img/estadio-96.png",
-    scale: 0.3
-})
-
-const stadiumStyle = new ol.style.Style({
-    image: stadiumIcon
-})
-
-//#endregion
-
-//#region Fetch Stadium Data
-const stadiumDataUrl = 'http://localhost/ptas-estadios/php/get_stadiums.php';
-async function getStadiumData() {
-    try {
-        const response = await fetchData(stadiumDataUrl);
-        return await JSON.parse(response);
-    }
-    catch (error) {
-        console.log(error);
-        return;
-    }
-}
-//#endregion
-
-//#region Fetch Points of Interest Data
-const poisDataUrl = 'http://localhost/ptas-estadios/php/get_pointsofinterest.php';
-async function getPointsOfInterestData() {
-    try {
-        const response = await fetchData(poisDataUrl);
-        return await JSON.parse(response);
-    } catch (error) {
-        console.log(error);
-        return;
-    }
-}
-
-//#endregion
-
-//#region Fetch Routing Polygon
-async function getRoutingPolygon(lon, lat, time, color) {
-    const url =
-        `https://routing.gis4cloud.pt/isochrone?json={"locations":[{"lat":${lat},"lon":${lon}}],"costing":"pedestrian","polygons":true,"contours":[{"time":15.0,"color":"000000"}]}&id=hull inicial`;
-    return await fetchData(url);
-}
-
-
-//#endregion
-
-//#region Populate Filters on Sidebar
-toggleFiltersBtn.addEventListener('click', () => {
-    if (filters.size === 0)
-        return;
-
-    filtersContainer.hidden = !filtersContainer.hidden;
-
-    if (filtersContainer.hidden)
-        return;
-    filtersElement.innerHTML = "";
-    filters.forEach(filter => {
-        const node = document.createElement("div");
-        node.classList.add("filter")
-        const checkbox = document.createElement("input")
-        checkbox.setAttribute("type", "checkbox")
-        const label = document.createElement("label")
-        label.innerText = filter
-
-        node.setAttribute("id", "filter")
-        node.appendChild(checkbox);
-        node.append(label);
-        filtersElement.appendChild(node)
-    })
-})
-submitFiltersBtn.addEventListener('click', () => {
-    filtersContainer.hidden = true;
-
-    const filtersChecked = []
-
-    Array.from(filtersElement.children).forEach(filter => {
-        const checkbox = filter.querySelector('input[type="checkbox"]');
-        const label = filter.querySelector('label');
-
-        if (checkbox.checked)
-            filtersChecked.push(label.innerText)
-    })
-    const poisLayer = mapContext.map.getLayers().getArray().filter(layer => layer.getProperties().name === 'pois')[0];
-    if (poisLayer === null || poisLayer === undefined)
-        return;
-
-    poisLayer.getSource().getFeatures().forEach(feat => {
-        const featId = feat.id_;
-        if (filtersChecked.includes(feat.getProperties().categoria)) {
-            feat.setStyle(poiStyle)
-            poisCache[parseInt(featId)].hidden = false;
-            return;
-        }
-        feat.setStyle(poiHiddenStyle)
-        poisCache[parseInt(featId)].hidden = true;
-    });
-
-    poiContainer.innerHTML = "";
-
-    Object.keys(poisCache)
-        .filter(poiId => !poisCache[poiId].hidden)
-        .forEach(poiId => {
-            const poi = poisCache[poiId].poi;
-
-            const node = document.createElement('div');
-            node.classList.add('poi');
-            node.setAttribute("data-id", poi.id);
-
-            console.log(poi.properties);
-
-            const title = document.createElement('h4');
-            title.classList.add('poi-titulo');
-            title.innerText = poi.properties.nome;
-
-            const category = document.createElement('p');
-            category.innerText = poi.properties.categoria;
-            category.classList.add('poi-categoria');
-
-            node.appendChild(title);
-            node.appendChild(category);
-            poiContainer.appendChild(node);
-
-            node.addEventListener('mouseenter', () => {
-                const feature = poisCache[node.dataset.id].poi;
-                const coordinates = feature.geometry.coordinates;
-                popup.setPosition(coordinates);
-                popupElement.removeAttribute("hidden");
-                popupElement.innerText = feature.properties.nome;
-            })
-            node.addEventListener('mouseleave', () => { disposePopover(popupElement) });
-
-        })
-
-    //todo update sidebar list
-    //updateSideBarPoIs(poisLayer.getSource().getFeatures())
-})
-resetFiltersBtn.addEventListener('click', () => {
-    const filtersCheckboxes = Array.from(filtersElement.getElementsByTagName('input'));
-    filtersCheckboxes.forEach(checkbox => checkbox.checked = true);
-})
-clearFiltersBtn.addEventListener('click', () => {
-    const filtersCheckboxes = Array.from(filtersElement.getElementsByTagName('input'));
-    filtersCheckboxes.forEach(checkbox => checkbox.checked = false);
-})
-//#endregion
-
-//#region Get Coordinates from address
-async function getAddressCoordinates(address) {
-    const baseURL = 'https://api.openrouteservice.org/geocode/search';
-
-    const url = new URL(baseURL);
-    url.searchParams.append('api_key', geocodingAPI);
-    url.searchParams.append('text', address);
-
-    try {
-        return await fetchData(url);
-    } catch (error) {
-        console.log(error);
-        return null;
-    }
-}
-
-const addressPopup = new ol.Overlay({
-    element: addressPopupElement,
-    positioning: 'bottom-center',
-    stopEvent: false
-})
-
-
-//#endregion
-
-//#region Get Optimized Route
-async function getOptimizedRoute(from, to) {
-    console.log(`From: ${from[0]} ; ${from[1]}`)
-    console.log(`To: ${to[0]} ; ${to[1]}`)
-
-    const fromCoords = turf.toWgs84(turf.point(from)).geometry.coordinates;
-    const toCoords = turf.toWgs84(turf.point(to)).geometry.coordinates;
-
-    console.log(fromCoords);
-    console.log(toCoords);
-
-    const base = `https://routing.gis4cloud.pt/route?json={"locations":[{"lat":${fromCoords[1]},"lon":${fromCoords[0]}\},{"lat":${toCoords[1]},"lon":${toCoords[0]}\}],"costing":"auto","costing_options":{"auto":{"country_crossing_penalty":2000.0}},"units":"kilometers%20","id":"my_work_route"}`;
-    const data = await fetchData(base);
-
-    const shape = data.trip.legs[0].shape
-    const decoded = decode(shape);
-
-    return decoded
-}
-
-const decode = function (str, precision) {
-    var index = 0,
-        lat = 0,
-        lng = 0,
-        coordinates = [],
-        shift = 0,
-        result = 0,
-        byte = null,
-        latitude_change,
-        longitude_change,
-        factor = Math.pow(10, precision || 6);
-
-    // Coordinates have variable length when encoded, so just keep
-    // track of whether we've hit the end of the string. In each
-    // loop iteration, a single coordinate is decoded.
-    while (index < str.length) {
-
-        // Reset shift, result, and byte
-        byte = null;
-        shift = 0;
-        result = 0;
-
-        do {
-            byte = str.charCodeAt(index++) - 63;
-            result |= (byte & 0x1f) << shift;
-            shift += 5;
-        } while (byte >= 0x20);
-
-        latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-
-        shift = result = 0;
-
-        do {
-            byte = str.charCodeAt(index++) - 63;
-            result |= (byte & 0x1f) << shift;
-            shift += 5;
-        } while (byte >= 0x20);
-
-        longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-
-        lat += latitude_change;
-        lng += longitude_change;
-
-        coordinates.push([lat / factor, lng / factor]);
-    }
-
-    return coordinates;
-};
-
 //#endregion
 
 //#region Main Loop
@@ -496,7 +211,7 @@ async function run() {
         //#region Populate Sidebar w/ PoIs' Information & Update Popup on PoI Hover
         poisCache = {};
         filters.clear();
-        poiContainer.innerHTML = "";
+        clearPoISidebarList();
         poisInPolygon.features.forEach(poi => {
             poisCache[poi.id] = { "poi": poi, "hidden": false };
             filters.add(poi.properties.categoria);
@@ -513,7 +228,7 @@ async function run() {
 
             node.appendChild(title);
             node.appendChild(category);
-            poiContainer.appendChild(node);
+            document.getElementById('poi-container').appendChild(node);
 
             node.addEventListener('mouseenter', () => {
                 const feature = poisCache[node.dataset.id].poi;
@@ -529,71 +244,6 @@ async function run() {
 
     })
     //#endregion
-
-    //#region On Get Directions Button Click
-    calculateRouteBtn.addEventListener('click', async () => {
-        addrSource.clear();
-        routeSource.clear();
-        const startingPointText = startingPointInput.value.trim();
-        if (!startingPointText || stadiumSelect.value === defaultSelectValue)
-            return;
-        const result = await getAddressCoordinates(startingPointText);
-
-        const feats = result.features.map(feat => {
-            return new ol.Feature({
-                geometry: new ol.geom.Point(feat.geometry.coordinates).transform(turfProjection, mapContext.projection),
-                label: feat.properties.label
-            })
-        })
-        addrSource.addFeatures(feats);
-
-        const startingPoints = feats;
-        const startingPointsContainer = document.getElementById('starting-points-container');
-        startingPoints.forEach(start => {
-            const node = document.createElement('div');
-            node.classList.add("starting-point");
-
-            const title = document.createElement('h4');
-            title.innerText = start.values_.label;
-
-            node.appendChild(title);
-            startingPointsContainer.appendChild(node);
-
-            node.addEventListener('click', () => {
-                const selectedStartingPoint = start;
-                calculateRoute(selectedStartingPoint,);
-            })
-        })
-
-        console.log(feats);
-
-        async function calculateRoute(startingPoint) {
-            addressPopup.setPosition(startingPoint.values_.geometry.flatCoordinates);
-            addressPopupElement.removeAttribute("hidden");
-            addressPopupElement.innerHTML = startingPoint.values_.label;
-
-            const from = startingPoint.values_.geometry.flatCoordinates;
-            const to = stadiumSelect.value.split(",").map(str => parseFloat(str));
-
-            const decodedShape = await getOptimizedRoute(from, to);
-            const shapePoints = decodedShape.map(coord => {
-                return [coord[1], coord[0]]
-            })
-            const transformedPoints = shapePoints.map(coord => {
-                return ol.proj.transform(coord, turfProjection, mapContext.projection);
-            });
-            const olLineString = new ol.geom.LineString(transformedPoints);
-            const lieStringFeature = new ol.Feature({ geometry: olLineString })
-            routeSource.clear();
-            routeSource.addFeature(lieStringFeature);
-
-            map.getView().fit(routeSource.getExtent(), {
-                padding: [100, 100, 100, 20]
-            });
-        }
-    });
-    //#endregion
-
 }
 
 run();

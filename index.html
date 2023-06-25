@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Estádios de Portugal</title>
     <!--JQuery-->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <!--Open Layers-->
@@ -14,6 +14,17 @@
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css" />
     <link rel="stylesheet" href="style.css">
+    <!--Scripts-->
+    <script src="./js/stadiums.js" defer></script>
+    <script src="./js/pointsOfInterest.js" defer></script>
+    <script src="./js/optimizedRoute.js" defer></script>
+    <script src="./js/filters.js" defer></script>
+    <script src="./js/isochrone.js" defer></script>
+    <script src="./js/popup.js" defer></script>
+    <script src="./js/openLayer.js" defer></script>
+    <script src="./js/openLayerStyling.js" defer></script>
+    <script src="./js/startingPoint.js" defer></script>
+
     <script src="./main.js" defer></script>
 </head>
 
@@ -28,9 +39,8 @@
             <div id="poi-results">
                 <h2 id="estadio-title"></h2>
                 <button id="toggle-filters-btn">Filtros</button>
-                <div id="poi-filters-container" hidden="true">
-                    <div id="poi-filters">
-
+                <div id="filters-modal" hidden="true">
+                    <div id="filters-container">
                     </div>
                     <button id="submit-filters-btn">Confirma</button>
                     <button id="reset-filters-btn">Reset</button>
@@ -44,9 +54,9 @@
             <div id="starting-points-container">
             </div>
             <div id="starting-point-form">
-                <label for="startingAddress">Ponto de Partida:</label>
-                <input type="text" name="startingAddress" id="inputStartingAddress">
-                <input type="button" id="btnCalculateRoute" value="Direções">
+                <label for="input-starting-address">Ponto de Partida:</label>
+                <input type="text" name="startingAddress" id="input-starting-address">
+                <input type="button" id="btn-calculate-route" value="Direções">
             </div>
         </section>
         <section id="map-container">
