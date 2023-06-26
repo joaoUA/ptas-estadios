@@ -150,7 +150,7 @@ async function run() {
         polygonLayer.getSource().addFeatures(polygonFeats);
 
         map.getView().fit(polygonLayer.getSource().getExtent(), {
-            padding: [100, 100, 100, 20]
+            padding: [100, 0, 100, map.getSize()[0] / 3]
         });
 
         const polygon = geojsonFormat.writeFeaturesObject(polygonFeats).features[0];
@@ -186,8 +186,12 @@ async function run() {
 
     })
 
-    //todo:
-    //começar o website ao selectionar um dos estádios
+    //Simulate a click on the first available option
+    const optionElements = stadiumSelect.getElementsByTagName('option');
+    const randomIndex = Math.floor(Math.random() * optionElements.length);
+    const randomOption = optionElements[randomIndex];
+    randomOption.selected = true;
+    stadiumSelect.dispatchEvent(new Event('change'));
 
     //todo:
     //permitir alterar o mapa de fundo
