@@ -1,0 +1,70 @@
+#filters-modal {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 0.5em;
+	z-index: 999;
+	border: 0.5em;
+	background-color: white;
+	border: 2px solid var(--secondary-color);
+	border-radius: 0.2em;
+}
+
+#filters-container {
+	display: grid;
+	gap: 0.8em;
+	grid-template-columns: repeat(2, 1fr);
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 0.5em;
+}
+
+#filters-container > li {
+	display: flex;
+	align-items: center;
+	gap: 0.4em;
+	padding: 0.2em 0.4em;
+	border-radius: 0.2em;
+	list-style: none;
+	color: var(--terciary-color);
+	background-color: var(--main-color);
+}
+#filters-container > li:hover {
+	background-color: var(--terciary-color);
+	color: var(--main-color);
+	cursor: pointer;
+}
+#filters-container > i {
+	font-size: 1.2em;
+}
+#filters-container > p {
+	max-width: 50ch;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#filters-modal > div {
+	display: flex;
+	gap: 0.5em;
+	margin-top: 0.3em;
+}
+
+#filters-modal button {
+	width: 100%;
+	margin-top: 0.3em;
+	padding: 0.2em 0;
+	font-size: 1.1em;
+	font-family: "Roboto", sans-serif;
+	font-weight: bold;
+	border: none;
+	border-radius: 0.2em;
+	background-color: var(--main-color);
+	color: var(--terciary-color);
+}
+#filters-modal button:hover {
+	background-color: var(--dark-color);
+	color: var(--main-color);
+	cursor: pointer;
+}

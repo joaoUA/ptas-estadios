@@ -10,7 +10,7 @@ const geojsonFormat = new ol.format.GeoJSON();
 const defaultSelectValue = "Escolha um estádio";
 
 let poisCache = {};
-const filters = new Set();
+const filters = new Map();
 
 const defaultZoom = 6.2;
 const defaultCenter = [-1_706_000, 4_606_000];
@@ -132,6 +132,7 @@ async function run() {
         });
 
     stadiumSelect.addEventListener('change', async (event) => {
+        document.getElementById('toggle-filters-btn').click();
         document.getElementById('stadium-info-container').hidden = false;
 
         const selectedIndex = event.target.selectedIndex;
@@ -180,30 +181,11 @@ async function run() {
                     "poi": poi,
                     "hidden": false,
                 };
-                filters.add(poi.properties.categoria);
-                const poiItem = document.createElement('li');
-                poiItem.classList.add('poi');
-                poiItem.setAttribute("data-id", poi.id);
-
-                const title = document.createElement('p');
-                title.innerText = poi.properties.nome;
-
-                const icon = document.createElement('i');
-                icon.classList.add('fa-solid');
-                icon.classList.add(poi.properties.icon);
-
-                poiItem.appendChild(icon);
-                poiItem.appendChild(title);
-                poiContainer.appendChild(poiItem);
-
-                poiItem.addEventListener('mouseenter', () => {
-                    const feature = poisCache[poiItem.dataset.id].poi;
-                    const coordinates = feature.geometry.coordinates;
-                    getPopup().setPosition(coordinates);
-                    getPopupElement().removeAttribute('hidden');
-                    getPopupElement().innerText = feature.properties.nome;
-                })
-                poiItem.addEventListener('mouseleave', () => { disposePopover(popupElement) });
+                filters.set(poi.properties.categoria_id, {
+                    nome: poi.properties.categoria,
+                    icon: poi.properties.icon
+                });
+                generatePoISidebarList();
             });
     })
 }

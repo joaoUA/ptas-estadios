@@ -13,23 +13,29 @@ filtersBtn.addEventListener('click', () => {
 })
 function generateFiltersElements() {
     filtersContainer.innerHTML = "";
-    filters.forEach(filter => {
-        const parent = document.createElement('div');
-        parent.classList.add('filter');
+    for (const [id, { nome, icon }] of filters) {
+        const parent = document.createElement('li');
+        parent.setAttribute('data-id', id);
 
         const checkbox = document.createElement('input');
         checkbox.setAttribute('type', 'checkbox');
         checkbox.checked = true;
 
-        const label = document.createElement('label');
-        label.innerText = filter;
+        const iconElement = document.createElement('i');
+        iconElement.classList.add('fa-solid');
+        iconElement.classList.add(icon);
 
-        //parent.setAttribute('id', filter)
+        const title = document.createElement('p');
+        title.innerText = nome;
+
+        parent.addEventListener('click', () => checkbox.checked = !checkbox.checked);
+
         parent.appendChild(checkbox);
-        parent.append(label);
+        parent.appendChild(iconElement);
+        parent.appendChild(title);
 
         filtersContainer.appendChild(parent);
-    })
+    }
 }
 
 const applyFiltersBtn = document.getElementById('submit-filters-btn');
@@ -38,24 +44,23 @@ applyFiltersBtn.addEventListener('click', () => {
 
     //Get checked filters in modal
     const categoriesChecked = [];
-    const filtersElements = Array.from(filtersContainer.getElementsByClassName('filter'));
+    const filtersElements = Array.from(filtersContainer.querySelectorAll('li'));
     filtersElements.forEach(element => {
         const checkbox = element.querySelector('input[type="checkbox"]');
-        const label = element.querySelector('label');
+        const categoryId = parseInt(element.getAttribute('data-id'));
 
         if (checkbox.checked)
-            categoriesChecked.push(label.innerText);
+            categoriesChecked.push(categoryId);
     })
 
     //Filter features on Point of Interests Layers
     //todo: GET REF TO POI LAYER
-    const poisLayer = mapContext.map.getLayers().getArray().filter(layer => layer.getProperties().name === 'pois')[0];
     if (poisLayer === null || poisLayer === undefined)
         return;
 
     poisLayer.getSource().getFeatures().forEach(feat => {
-        const featId = feat.id_;
-        const featCategoryIsChecked = categoriesChecked.includes(feat.getProperties().categoria);
+        const featId = feat.id_
+        const featCategoryIsChecked = categoriesChecked.includes(feat.getProperties().categoria_id);
 
         if (featCategoryIsChecked) {
             feat.setStyle(poiStyle);
@@ -74,36 +79,34 @@ function generatePoISidebarList() {
     Object.keys(poisCache)
         .filter(poiId => !poisCache[poiId].hidden) //get not hidden PoIs
         .forEach(poiId => {
+
             const poi = poisCache[poiId].poi;
 
-            const parent = document.createElement('div');
-            parent.classList.add('poi');
-            parent.setAttribute('data-id', poi.id);
+            const poiItem = document.createElement('li');
+            poiItem.classList.add('poi');
+            poiItem.setAttribute("data-id", poi.id);
 
+            const title = document.createElement('p');
+            title.innerText = poi.properties.nome;
 
-            const poiTitle = document.createElement('h4');
-            poiTitle.classList.add('poi-titulo');
-            poiTitle.innerText = poi.properties.nome;
+            const icon = document.createElement('i');
+            icon.classList.add('fa-solid');
+            icon.classList.add(poi.properties.icon);
 
-            const poiCategory = document.createElement('p');
-            poiCategory.classList.add('poi-categoria');
-            poiCategory.innerText = poi.properties.categoria;
+            poiItem.appendChild(icon);
+            poiItem.appendChild(title);
+            poiContainer.appendChild(poiItem);
 
-            parent.appendChild(poiTitle);
-            parent.appendChild(poiCategory);
-            poiContainer.appendChild(parent);
-
-            parent.addEventListener('mouseenter', () => {
-                const feature = poisCache[parent.dataset.id].poi;
+            poiItem.addEventListener('mouseenter', () => {
+                const feature = poisCache[poiItem.dataset.id].poi;
                 const coordinates = feature.geometry.coordinates;
-                popup.setPosition(coordinates);
-                popupElement.removeAttribute('hidden');
-                popupElement.innerText = feature.properties.nome;
-            });
-            parent.addEventListener('mouseleave', () => disposePopover(popupElement));
+                getPopup().setPosition(coordinates);
+                getPopupElement().removeAttribute('hidden');
+                getPopupElement().innerText = feature.properties.nome;
+            })
+            poiItem.addEventListener('mouseleave', () => { disposePopover(popupElement) });
         });
 }
-
 
 //Reset (select all) filters
 const resetFiltersBtn = document.getElementById('reset-filters-btn');

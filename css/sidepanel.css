@@ -144,6 +144,7 @@
 #starting-points-list {
 	max-height: 160px;
 	overflow-y: auto;
+	margin: 0.5em 0em;
 }
 #starting-points-list > li {
 	display: flex;
@@ -153,7 +154,7 @@
 	font-size: 0.9em;
 	list-style: none;
 	background-color: var(--main-color);
-	border-radius: 0.5em;
+	border-radius: 0.2em;
 }
 #starting-points-list > li:nth-child(even) {
 	background-color: white;
