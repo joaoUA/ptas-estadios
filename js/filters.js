@@ -76,6 +76,7 @@ applyFiltersBtn.addEventListener('click', () => {
 
 })
 function generatePoISidebarList() {
+    document.getElementById('poi-list').innerHTML = "";
     Object.keys(poisCache)
         .filter(poiId => !poisCache[poiId].hidden) //get not hidden PoIs
         .forEach(poiId => {
