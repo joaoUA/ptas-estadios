@@ -11,6 +11,8 @@ btnGetStartingPoints.addEventListener('click', async () => {
         return;
     const addressCoords = await getAddressCoordinates(address);
 
+    console.log(addressCoords);
+
     const startingPointsFeatures = addressCoords.features.map(feat =>
         new ol.Feature({
             geometry: new ol.geom.Point(feat.geometry.coordinates).transform(
@@ -20,21 +22,26 @@ btnGetStartingPoints.addEventListener('click', async () => {
         }));
     startPointsLayer.getSource().addFeatures(startingPointsFeatures);
 
-    const startingPointsContainer = document.getElementById('starting-points-container');
+    const startingPointsContainer = document.getElementById('starting-points-list');
     startingPointsContainer.innerHTML = "";
     startingPointsFeatures.forEach(feat => {
-        const parent = document.createElement('div');
+        const parent = document.createElement('li');
         parent.classList.add('starting-point');
 
-        const title = document.createElement('h4');
+        const icon = document.createElement('i');
+        icon.classList.add('fa-solid');
+        icon.classList.add('fa-location-dot');
+
+        const title = document.createElement('p');
         title.innerText = feat.values_.label;
 
+        parent.appendChild(icon);
         parent.appendChild(title);
         startingPointsContainer.appendChild(parent);
 
         parent.addEventListener('click', () => {
             calculateRoute(feat)
-        })
+        });
     })
 });
 
@@ -57,36 +64,28 @@ async function getAddressCoordinates(address) {
 }
 
 async function calculateRoute(startingPoint) {
+    routeLayer.getSource().clear();
+
     const origin = startingPoint.values_.geometry.flatCoordinates;
     const destiny = stadiumSelect.value.split(",").map(str => parseFloat(str));
-
-    console.log(getAddressPopup());
-    console.log(getAddressPopupElement());
 
     getAddressPopup().setPosition(origin);
     getAddressPopupElement().removeAttribute('hidden');
     getAddressPopupElement().innerText = startingPoint.values_label;
 
-    const from = origin;
-    const to = destiny;
-
-    const decodedShape = await getOptimizedRoute(from, to);
+    const decodedShape = await getOptimizedRoute(origin, destiny);
     const shapePoints = decodedShape.map(coord => [coord[1], coord[0]]); //coordinates come flipped
     const transformedPoints = shapePoints.map(coord => ol.proj.transform(
         coord,
-        turfProjection,
+        'EPSG:4326',
         'EPSG:3857'
     ));
     const route = new ol.Feature({
         geometry: new ol.geom.LineString(transformedPoints)
     });
-    routeLayer.getSource().clear();
-    routeLayer.getSource().addFeatures(route);
+    console.log(route);
+    routeLayer.getSource().addFeature(route);
 
-    console.log(routeLayer.getSource());
-
-
-    //todo: not getting any features?????
     map.getView().fit(routeLayer.getSource().getExtent(), {
         padding: [100, 100, 100, 100]
     });

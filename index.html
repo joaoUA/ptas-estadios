@@ -12,6 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/ol@v7.3.0/dist/ol.js"></script>
     <!--Turf-->
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <!--Font Awesome-->
+    <script src="https://kit.fontawesome.com/db18a4139a.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css" />
     <link rel="stylesheet" href="style.css">
     <!--Scripts-->
@@ -25,38 +27,34 @@
     <script src="./js/openLayerStyling.js" defer></script>
     <script src="./js/startingPoint.js" defer></script>
 
-    <script src="./main.js" defer></script>
+    <script src="./js/main.js" defer></script>
 </head>
 
 <body>
     <main>
-        <section id="config-container">
-            <div class="config-group">
-                <label for="stadium-select">Escolha um estádio:</label>
+        <section id="side-panel">
+            <div id="stadium-selector">
+                <label for="stadium-select">Estádio:</label>
                 <select name="stadium-select" id="stadium-select">
                 </select>
             </div>
-            <div id="poi-results">
-                <h2 id="estadio-title"></h2>
-                <button id="toggle-filters-btn">Filtros</button>
-                <div id="filters-modal" hidden="true">
-                    <div id="filters-container">
-                    </div>
-                    <button id="submit-filters-btn">Confirma</button>
-                    <button id="reset-filters-btn">Reset</button>
-                    <button id="clear-filters-btn">Limpar</button>
-                </div>
-
-                <div id="poi-container">
-
-                </div>
+            <div id="stadium-info-container" hidden>
+                <button id="toggle-filters-btn">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+                <ul id="poi-list">
+                </ul>
             </div>
-            <div id="starting-points-container">
-            </div>
-            <div id="starting-point-form">
-                <label for="input-starting-address">Ponto de Partida:</label>
-                <input type="text" name="startingAddress" id="input-starting-address">
-                <input type="button" id="btn-get-address" value="Direções">
+            <div id="starting-point-container">
+                <ul id="starting-points-list">
+                </ul>
+                <div>
+                    <input type="text" name="startingAddress" id="input-starting-address"
+                        placeholder="Ponto de Partida">
+                    <button type="button" id="btn-get-address" value="Direções">
+                        <i class="fa-solid fa-compass"></i>
+                    </button>
+                </div>
             </div>
         </section>
         <section id="map-container">
@@ -65,6 +63,13 @@
                 <div id="address-popup" hidden="hidden">Address</div>
             </div>
         </section>
+        <div id="filters-modal" hidden="true">
+            <div id="filters-container">
+            </div>
+            <button id="submit-filters-btn">Confirma</button>
+            <button id="reset-filters-btn">Reset</button>
+            <button id="clear-filters-btn">Limpar</button>
+        </div>
     </main>
 </body>
 

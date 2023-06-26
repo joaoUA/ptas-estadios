@@ -1,0 +1,172 @@
+#side-panel {
+	max-height: calc(100vh - (2 * 1.5em));
+	width: 400px;
+	background-color: white;
+	position: relative;
+	z-index: 2;
+
+	margin: 1.5em 3em;
+	padding: 0.5em 0;
+	border-radius: 0.5em;
+
+	font-family: "Roboto", sans-serif;
+}
+#side-panel > * {
+	padding: 0.5em 1em;
+}
+
+#stadium-selector {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5em;
+	padding-bottom: 0.5em;
+
+	border-bottom: 2px var(--secondary-color) solid;
+}
+#stadium-selector > label {
+	font-weight: bold;
+	color: var(--dark-color);
+}
+#stadium-select {
+	appearance: none;
+	padding: 0.5em 1em;
+	border-radius: 0.5em;
+	font-family: "Roboto", sans-serif;
+	border: 1px var(--secondary-color) solid;
+}
+#stadium-select option {
+	appearance: none;
+}
+#stadium-select option:nth-child(odd) {
+	background-color: var(--main-color);
+}
+#stadium-select:focus {
+	outline: none;
+	border: 1px solid var(--terciary-color);
+}
+
+#toggle-filters-btn {
+	width: 30px;
+	height: 30px;
+	outline: none;
+	border: none;
+	border-radius: 0.5em;
+	color: var(--terciary-color);
+	background-color: var(--main-color);
+}
+#toggle-filters-btn:hover {
+	background-color: var(--terciary-color);
+	color: var(--main-color);
+	cursor: pointer;
+}
+
+#stadium-info-container {
+	border-bottom: 2px var(--secondary-color) solid;
+}
+#stadium-info-container > h1 {
+	font-size: 1em;
+	margin-bottom: 0.5em;
+}
+
+#poi-list {
+	margin: 0.5em 0;
+	max-height: 200px;
+	overflow-y: auto;
+}
+#poi-list > li {
+	display: flex;
+	padding: 0.4em 0.8em;
+	font-size: 0.9em;
+	background-color: var(--main-color);
+	color: var(--dark-color);
+	list-style: none;
+	border-radius: 0.2em;
+	gap: 0.8em;
+	align-items: center;
+
+	overflow-y: auto;
+}
+#poi-list > li:not(:first-child):not(:last-child) {
+	margin: 0.2em 0;
+}
+#poi-list > li:nth-child(even) {
+	background-color: white;
+}
+#poi-list > li:hover {
+	background-color: var(--terciary-color);
+	color: var(--main-color);
+	font-weight: bold;
+	cursor: pointer;
+}
+#poi-list > li > i {
+	color: var(--terciary-color);
+}
+#poi-list > li:hover > i {
+	color: var(--main-color);
+}
+
+#starting-point-container > div:last-child {
+	display: flex;
+	gap: 0.5em;
+}
+#input-starting-address {
+	width: 100%;
+	padding: 0.4em 0.8em;
+	border-radius: 0.5em;
+	outline: none;
+	border: none;
+	border: 1px var(--secondary-color) solid;
+	background-color: var(--main-color);
+	color: var(--dark-color);
+
+	grid-area: input;
+}
+#input-starting-address:focus {
+	border: 1px solid var(--terciary-color);
+	outline: none;
+	background-color: white;
+}
+#btn-get-address {
+	width: 48px;
+	height: 32px;
+	background-color: var(--main-color);
+	color: var(--terciary-color);
+	border: none;
+	border-radius: 0.5em;
+	grid-area: btn;
+}
+#btn-get-address:hover {
+	color: var(--main-color);
+	background-color: var(--terciary-color);
+	cursor: pointer;
+}
+
+#starting-points-list {
+	max-height: 160px;
+	overflow-y: auto;
+}
+#starting-points-list > li {
+	display: flex;
+	align-items: center;
+	gap: 0.8em;
+	padding: 0.4em 0.8em;
+	font-size: 0.9em;
+	list-style: none;
+	background-color: var(--main-color);
+	border-radius: 0.5em;
+}
+#starting-points-list > li:nth-child(even) {
+	background-color: white;
+}
+#starting-points-list > li:hover {
+	background-color: var(--terciary-color);
+	color: var(--main-color);
+	font-weight: bold;
+	cursor: pointer;
+}
+#starting-points-list > li > i {
+	color: var(--terciary-color);
+}
+#starting-points-list > li:hover > i {
+	color: var(--main-color);
+}

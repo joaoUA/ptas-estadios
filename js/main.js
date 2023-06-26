@@ -1,6 +1,6 @@
 'use strict'
 const targetElement = document.getElementById('map');
-const poiContainer = document.getElementById('poi-container');
+const poiContainer = document.getElementById('poi-list');
 const stadiumSelect = document.getElementById('stadium-select');
 
 const pgDataProjection = 'EPSG:3857';
@@ -116,6 +116,7 @@ async function run() {
     const [stadiums, pointsOfInterest] = await Promise.all([getStadiumData(), getPointsOfInterestData()]);
     stadiumsLayer.getSource().addFeatures(geojsonFormat.readFeatures(stadiums));
 
+    console.log(pointsOfInterest);
     const blankOption = document.createElement('option');
     blankOption.selected = true;
     blankOption.disabled = true;
@@ -131,11 +132,11 @@ async function run() {
         });
 
     stadiumSelect.addEventListener('change', async (event) => {
+        document.getElementById('stadium-info-container').hidden = false;
+
         const selectedIndex = event.target.selectedIndex;
         const selectedOption = event.target.options[selectedIndex];
         const stadiumCoords = selectedOption.value.split(',').map(str => parseFloat(str));
-
-        document.getElementById('estadio-title').innerHTML = selectedOption.innerText;
 
         let polygonFeats;
         try {
@@ -180,81 +181,29 @@ async function run() {
                     "hidden": false,
                 };
                 filters.add(poi.properties.categoria);
+                const poiItem = document.createElement('li');
+                poiItem.classList.add('poi');
+                poiItem.setAttribute("data-id", poi.id);
 
-                const parent = document.createElement('div');
-                parent.classList.add('poi');
-                parent.setAttribute("data-id", poi.id);
-
-                const title = document.createElement('h4');
-                title.classList.add('poi-titulo');
+                const title = document.createElement('p');
                 title.innerText = poi.properties.nome;
 
-                const category = document.createElement('p');
-                category.innerText = poi.properties.categoria;
-                category.classList.add('poi-categoria');
+                const icon = document.createElement('i');
+                icon.classList.add('fa-solid');
+                icon.classList.add(poi.properties.icon);
 
-                parent.appendChild(title);
-                parent.appendChild(category);
-                poiContainer.appendChild(parent);
+                poiItem.appendChild(icon);
+                poiItem.appendChild(title);
+                poiContainer.appendChild(poiItem);
 
-                parent.addEventListener('mouseenter', () => {
-                    const feature = poisCache[parent.dataset.id].poi;
+                poiItem.addEventListener('mouseenter', () => {
+                    const feature = poisCache[poiItem.dataset.id].poi;
                     const coordinates = feature.geometry.coordinates;
                     getPopup().setPosition(coordinates);
                     getPopupElement().removeAttribute('hidden');
                     getPopupElement().innerText = feature.properties.nome;
                 })
-                parent.addEventListener('mouseleave', () => { disposePopover(popupElement) });
+                poiItem.addEventListener('mouseleave', () => { disposePopover(popupElement) });
             });
     })
 }
-
-
-
-
-
-
-
-
-//#region Old Styles
-
-//Estilos
-const mainFill = new ol.style.Fill({
-    color: 'red'
-})
-const secondaryFill = new ol.style.Fill({
-    color: 'white'
-})
-const mainStroke = new ol.style.Stroke({
-    color: 'black',
-    width: 1
-})
-
-const originaPoIStyle = new ol.style.Style({
-    image: new ol.style.Circle({
-        radius: 5,
-        fill: mainFill,
-        stroke: mainStroke
-    })
-})
-
-
-const hoverFill = new ol.style.Fill({
-    color: 'blue'
-})
-
-const hoverStroke = new ol.style.Stroke({
-    color: 'black',
-    width: 2
-})
-
-const hoverStyle = new ol.style.Style({
-    fill: hoverFill,
-    stroke: hoverStroke,
-    image: new ol.style.Circle({
-        radius: 10,
-        fill: hoverFill,
-        stroke: hoverStroke
-    })
-})
-//#endregion

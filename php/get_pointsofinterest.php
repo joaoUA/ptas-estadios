@@ -15,12 +15,13 @@
         FROM (
             SELECT jsonb_build_object(
                 'type', 'Feature',
-                'id', id,
-                'category', categoria,
+                'id', inputs.id,
+                'category', c.nome,
                 'geometry', ST_AsGeoJSON(geom)::jsonb,
-                'properties', to_jsonb(inputs) - 'id' - 'geom'
+                'properties', to_jsonb(inputs) - 'id' - 'geom' || jsonb_build_object('categoria', c.nome, 'icon', c.icon)
             ) AS feature
             FROM (SELECT * FROM poi_final) inputs
+            INNER JOIN categorias c ON inputs.categoria_id = c.id
         ) features;";
     
         $result = pg_prepare($connection, "pois_query", $query);
