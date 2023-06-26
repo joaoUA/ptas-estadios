@@ -13,9 +13,7 @@ function disposePopover(popup) {
     popup.innerText = "";
 }
 
-
-
-const addressPopupElement = '';
+const addressPopupElement = document.getElementById('address-popup');
 const addressPopup = new ol.Overlay({
     element: addressPopupElement,
     positioning: 'bottom-center',

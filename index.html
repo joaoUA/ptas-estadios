@@ -15,13 +15,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css" />
     <link rel="stylesheet" href="style.css">
     <!--Scripts-->
+    <script src="./js/helper.js" defer></script>
     <script src="./js/stadiums.js" defer></script>
     <script src="./js/pointsOfInterest.js" defer></script>
     <script src="./js/optimizedRoute.js" defer></script>
     <script src="./js/filters.js" defer></script>
     <script src="./js/isochrone.js" defer></script>
     <script src="./js/popup.js" defer></script>
-    <script src="./js/openLayer.js" defer></script>
     <script src="./js/openLayerStyling.js" defer></script>
     <script src="./js/startingPoint.js" defer></script>
 
@@ -56,7 +56,7 @@
             <div id="starting-point-form">
                 <label for="input-starting-address">Ponto de Partida:</label>
                 <input type="text" name="startingAddress" id="input-starting-address">
-                <input type="button" id="btn-calculate-route" value="Direções">
+                <input type="button" id="btn-get-address" value="Direções">
             </div>
         </section>
         <section id="map-container">

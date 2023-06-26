@@ -1,4 +1,4 @@
-async function getRoutingPolygon(lon, lat, time, color) {
+async function getRoutingPolygon(lon, lat, time) {
     const url =
         `https://routing.gis4cloud.pt/isochrone?json={
             "locations":[
@@ -11,11 +11,31 @@ async function getRoutingPolygon(lon, lat, time, color) {
             "polygons":true,
             "contours":[
                 {
-                    "time":15.0,
+                    "time":${time},
                     "color":"ff0000"
                 }
             ]
         }
         &id=hull inicial`;
     return await fetchData(url);
+}
+
+async function getPolygonAroundStadium(center) {
+
+    const projected = ol.proj.transform(
+        center,
+        'EPSG:3857',
+        'EPSG:4326',
+    );
+
+    const longitude = projected[0];
+    const latitude = projected[1];
+    const time = 15.0;
+
+    let polygonsFeatures = await getRoutingPolygon(longitude, latitude, time);
+
+    return geojsonFormat.readFeatures(polygonsFeatures, {
+        dataProjection: 'EPSG:4326',
+        featureProjection: 'EPSG:3857'
+    })
 }

@@ -1,12 +1,7 @@
 'use strict'
-//#region HTML Elements
 const targetElement = document.getElementById('map');
-const stadiumSelect = document.getElementById('stadium-select');
-
-const stadiumHeading = document.getElementById('estadio-title');
 const poiContainer = document.getElementById('poi-container');
-
-//#endregion
+const stadiumSelect = document.getElementById('stadium-select');
 
 const pgDataProjection = 'EPSG:3857';
 const olMapProjection = 'EPSG:3857';
@@ -14,240 +9,214 @@ const turfProjection = 'EPSG:4326';
 const geojsonFormat = new ol.format.GeoJSON();
 const defaultSelectValue = "Escolha um estádio";
 
-const mapContext = {
-    view: null,
-    layers: null,
-    map: null,
-    projection: olMapProjection,
-}
-const mapData = {
-    stadiums: null,
-    pois: null
-}
 let poisCache = {};
 const filters = new Set();
 
-//#region Helpers
-async function fetchData(url) {
-    const res = await fetch(url, {});
-    return await res.json();
-}
-function clearPoISidebarList() {
-    poiContainer.innerHTML = '';
-}
-//#endregion
+const defaultZoom = 6.2;
+const defaultCenter = [-1_706_000, 4_606_000];
+const view = new ol.View({
+    center: defaultCenter,
+    zoom: defaultZoom
+});
+const layers = [];
+const map = new ol.Map({
+    target: targetElement,
+    layers: layers,
+    view: view
+});
 
-//#region Main Loop
+//* LAYERS ORDER:
+//* 5 - starting point
+//* 4 - stadiums
+//* 3 - points of interest
+//* 2 - route from starting point to stadium
+//* 1 - polygon around the map
+//* 0 - map layers (osm, toner-lite, etc), layers that represente the world map
+
+//Map base layers
+const baseLayers = new ol.layer.Group({});
+map.addLayer(baseLayers);
+
+const tonerLite = new ol.layer.Tile({
+    source: new ol.source.Stamen({
+        layer: 'toner-lite'
+    }),
+    zIndex: 0,
+});
+baseLayers.getLayers().push(tonerLite);
+tonerLite.setProperties({ 'name': 'toner-lite' });
+
+const osmLayer = new ol.layer.Tile({
+    source: new ol.source.OSM(),
+    zIndex: 0,
+});
+baseLayers.getLayers().push(osmLayer);
+osmLayer.setProperties({ 'name': 'osm' });
+//Feature layers
+const featLayers = new ol.layer.Group({});
+map.addLayer(featLayers);
+
+//Layer that will have the polygon around the stadium (result of the isochrone api call)
+const polygonLayer = new ol.layer.Vector({
+    title: 'hull',  //todo: test removing this
+    source: new ol.source.Vector({}),
+    zIndex: 1,
+});
+polygonLayer.setProperties({ 'name': 'polygon' });
+featLayers.getLayers().push(polygonLayer);
+
+const stadiumsLayer = new ol.layer.Vector({
+    source: new ol.source.Vector({}),
+    style: stadiumStyle,
+    zIndex: 4
+});
+featLayers.getLayers().push(stadiumsLayer);
+stadiumsLayer.setProperties({ 'name': 'stadiums' });
+
+const poisLayer = new ol.layer.Vector({
+    source: new ol.source.Vector({}),
+    style: poiStyle,
+    zIndex: 3
+});
+featLayers.getLayers().push(poisLayer);
+poisLayer.setProperties({ 'name': 'points-of-interest' });
+
+const startPointsLayer = new ol.layer.Vector({
+    source: new ol.source.Vector({}),
+    style: poiStyle,
+    zIndex: 5,
+});
+featLayers.getLayers().push(startPointsLayer);
+startPointsLayer.setProperties({ 'name': 'starting-points' });
+
+const routeLayer = new ol.layer.Vector({
+    source: new ol.source.Vector({}),
+    style: new ol.style.Style({
+        stroke: new ol.style.Stroke({
+            color: 'purple',
+            width: 5,
+            //lineDash: [5,5]
+        })
+    }),
+    zIndex: 2
+})
+featLayers.getLayers().push(routeLayer);
+routeLayer.setProperties({ 'name': 'route' });
+
+map.addOverlay(getPopup());
+map.addOverlay(getAddressPopup());
+
+
+run();
+
 async function run() {
-    //#region Create OpenLayers Map
-    const mapDefaults = {
-        center: [-1706000, 4606000],
-        zoom: 6.2
-    };
-    const mainView = new ol.View({
-        center: mapDefaults.center,
-        zoom: mapDefaults.zoom
-    });
-    const layers = [];
-    const map = new ol.Map({
-        target: targetElement,
-        layers: layers,
-        view: mainView
-    });
+    //todo: 
+    //talvez dá para melhorar ao resolver o casos dos estadios assim que completa (pq acaba primeiro que os PoIS)
+    //em vez de estar à espera que ambos acabem e só depois agir
+    const [stadiums, pointsOfInterest] = await Promise.all([getStadiumData(), getPointsOfInterestData()]);
+    stadiumsLayer.getSource().addFeatures(geojsonFormat.readFeatures(stadiums));
 
-    //OpenStreetMap Layer
-    const osmLayer = new ol.layer.Tile({
-        source: new ol.source.Stamen({
-            layer: 'toner-lite'
-        })
-    });
-    map.addLayer(osmLayer);
-    osmLayer.setProperties({ "name": "osm" });
-
-    const polygonLayer = new ol.layer.Vector({
-        title: "hull",
-        source: new ol.source.Vector({}),
-        zIndex: 1
-    });
-    map.addLayer(polygonLayer);
-    polygonLayer.setProperties({ "name": "polygon" })
-
-    const stadiumsSource = new ol.source.Vector({});
-    const stadiumsLayer = new ol.layer.Vector({
-        zIndex: 4,
-        source: stadiumsSource,
-        style: stadiumStyle
-    });
-    map.addLayer(stadiumsLayer);
-    stadiumsLayer.setProperties({ "name": "stadiums" })
-
-    const poisSource = new ol.source.Vector({});
-    const poisLayer = new ol.layer.Vector({
-        zIndex: 3,
-        source: poisSource,
-        style: poiStyle,
-        name: 'pois'
-    })
-    map.addLayer(poisLayer);
-
-    const addrSource = new ol.source.Vector({});
-    const addrLayer = new ol.layer.Vector({
-        zIndex: 5,
-        source: addrSource,
-        style: poiStyle,
-        name: 'addr'
-    });
-    map.addLayer(addrLayer)
-
-    const routeSource = new ol.source.Vector({});
-    const routeLayer = new ol.layer.Vector({
-        zIndex: 2,
-        source: routeSource,
-        style: new ol.style.Style({
-            stroke: new ol.style.Stroke({
-                color: 'purple', // Set the stroke color
-                width: 5, // Set the stroke width
-                //lineDash: [5, 5] // Set the line dash pattern (optional)
-            })
-        })
-    });
-    map.addLayer(routeLayer);
-
-    mapContext.view = mainView;
-    mapContext.layers = layers;
-    mapContext.map = map;
-    mapContext.map.addOverlay(popup);
-    mapContext.map.addOverlay(addressPopup);
-    //#endregion
-
-
-    //Get Stadiums
-    mapData.stadiums = await getStadiumData();
-    //Get Points of Interest
-    mapData.pois = await getPointsOfInterestData();
-
-    //#region Populate Stadiums Select
-    Object.values(mapData.stadiums.features).forEach(stadium => {
-        const name = stadium.properties.nome;
-        const position = stadium.geometry.coordinates;
-        const node = document.createElement('option');
-        node.value = position;
-        node.innerText = name;
-
-        stadiumSelect.appendChild(node);
-    })
     const blankOption = document.createElement('option');
     blankOption.selected = true;
     blankOption.disabled = true;
-    blankOption.textContent = defaultSelectValue;
-    stadiumSelect.insertBefore(blankOption, stadiumSelect.firstChild);
-    //#endregion
-    console.log(mapData);
-    stadiumsSource.addFeatures(geojsonFormat.readFeatures(mapData.stadiums));
+    blankOption.innerText = defaultSelectValue;
+    stadiumSelect.appendChild(blankOption);
 
-    //#region On Stadium Option Select
-    stadiumSelect.addEventListener('change', async () => {
+    Object.values(stadiums.features)
+        .forEach(stadium => {
+            const option = document.createElement('option');
+            option.value = stadium.geometry.coordinates;
+            option.innerText = stadium.properties.nome;
+            stadiumSelect.appendChild(option);
+        });
 
-        //#region Zoom To Selected Stadium Position
-        const coordinates = stadiumSelect.value.split(",").map(str => parseFloat(str));
-        mapContext.view.animate({
-            center: coordinates,
-            duration: 1000,
-            zoom: 16,
-            easing: ol.easing.easeOut
-        })
-        //#endregion
+    stadiumSelect.addEventListener('change', async (event) => {
+        const selectedIndex = event.target.selectedIndex;
+        const selectedOption = event.target.options[selectedIndex];
+        const stadiumCoords = selectedOption.value.split(',').map(str => parseFloat(str));
 
-        //update stadium name on the sidebar
-        stadiumHeading.innerHTML = stadiumSelect.selectedOptions[0].innerText;
+        document.getElementById('estadio-title').innerHTML = selectedOption.innerText;
 
-        //#region Create Polygon Shape
-        const source = pgDataProjection;
-        const destination = turfProjection;
-        const projectedCoordinates = ol.proj.transform(coordinates, source, destination);
-
-        const lon = projectedCoordinates[0];
-        const lat = projectedCoordinates[1];
-        const time = 15.0;
-        const color = '000000';
-        let polygonsFeatures;
+        let polygonFeats;
         try {
-            polygonsFeatures = await getRoutingPolygon(lon, lat, time, color);
+            polygonFeats = await getPolygonAroundStadium(stadiumCoords);
         } catch (error) {
             console.log(error);
             return;
         }
-        const projectedPolygonsFeatures = geojsonFormat.readFeatures(polygonsFeatures, {
-            dataProjection: turfProjection, //from
-            featureProjection: mapContext.projection  //to
-        });
         polygonLayer.getSource().clear();
-        polygonLayer.getSource().addFeatures(projectedPolygonsFeatures);
-        stadiumsSource.clear();
-        poisSource.clear();
-        routeSource.clear();
+        stadiumsLayer.getSource().clear();
+        poisLayer.getSource().clear();
+        routeLayer.getSource().clear();
+
+        polygonLayer.getSource().addFeatures(polygonFeats);
 
         map.getView().fit(polygonLayer.getSource().getExtent(), {
             padding: [100, 100, 100, 20]
         });
-        //#endregion
 
-        //#region Get Overlapping Points of Interest & Stadiums
-        const firstPolygon = geojsonFormat.writeFeaturesObject(projectedPolygonsFeatures).features[0];
-
+        const polygon = geojsonFormat.writeFeaturesObject(polygonFeats).features[0];
+        //todo: change to only show one stadium, this could possibly show multiple
         const stadiumInPolygon = turf.pointsWithinPolygon(
-            geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(mapData.stadiums)),
-            firstPolygon
+            geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(stadiums)),
+            polygon
         );
-        stadiumsSource.addFeatures(geojsonFormat.readFeatures(stadiumInPolygon));
+        stadiumsLayer.getSource().addFeatures(geojsonFormat.readFeatures(stadiumInPolygon));
 
         const poisInPolygon = turf.pointsWithinPolygon(
-            geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(mapData.pois)),
-            firstPolygon
+            geojsonFormat.writeFeaturesObject(geojsonFormat.readFeatures(pointsOfInterest)),
+            polygon
         );
-        poisSource.addFeatures(geojsonFormat.readFeatures(poisInPolygon));
-        //#endregion
+        poisLayer.getSource().addFeatures(geojsonFormat.readFeatures(poisInPolygon));
 
-        //#region Populate Sidebar w/ PoIs' Information & Update Popup on PoI Hover
         poisCache = {};
         filters.clear();
         clearPoISidebarList();
-        poisInPolygon.features.forEach(poi => {
-            poisCache[poi.id] = { "poi": poi, "hidden": false };
-            filters.add(poi.properties.categoria);
 
-            const node = document.createElement('div');
-            node.classList.add('poi');
-            node.setAttribute("data-id", poi.id);
-            const title = document.createElement('h4');
-            title.classList.add('poi-titulo');
-            title.innerText = poi.properties.nome;
-            const category = document.createElement('p');
-            category.innerText = poi.properties.categoria;
-            category.classList.add('poi-categoria');
+        poisInPolygon.features
+            .forEach(poi => {
+                poisCache[poi.id] = {
+                    "poi": poi,
+                    "hidden": false,
+                };
+                filters.add(poi.properties.categoria);
 
-            node.appendChild(title);
-            node.appendChild(category);
-            document.getElementById('poi-container').appendChild(node);
+                const parent = document.createElement('div');
+                parent.classList.add('poi');
+                parent.setAttribute("data-id", poi.id);
 
-            node.addEventListener('mouseenter', () => {
-                const feature = poisCache[node.dataset.id].poi;
-                const coordinates = feature.geometry.coordinates;
-                popup.setPosition(coordinates);
-                popupElement.removeAttribute("hidden");
-                popupElement.innerText = feature.properties.nome;
-            })
-            node.addEventListener('mouseleave', () => { disposePopover(popupElement) });
-        })
-        //#endregion
+                const title = document.createElement('h4');
+                title.classList.add('poi-titulo');
+                title.innerText = poi.properties.nome;
 
+                const category = document.createElement('p');
+                category.innerText = poi.properties.categoria;
+                category.classList.add('poi-categoria');
 
+                parent.appendChild(title);
+                parent.appendChild(category);
+                poiContainer.appendChild(parent);
+
+                parent.addEventListener('mouseenter', () => {
+                    const feature = poisCache[parent.dataset.id].poi;
+                    const coordinates = feature.geometry.coordinates;
+                    getPopup().setPosition(coordinates);
+                    getPopupElement().removeAttribute('hidden');
+                    getPopupElement().innerText = feature.properties.nome;
+                })
+                parent.addEventListener('mouseleave', () => { disposePopover(popupElement) });
+            });
     })
-    //#endregion
 }
 
-run();
-//#endregion
+
+
+
+
+
+
+
+//#region Old Styles
 
 //Estilos
 const mainFill = new ol.style.Fill({
@@ -288,3 +257,4 @@ const hoverStyle = new ol.style.Style({
         stroke: hoverStroke
     })
 })
+//#endregion

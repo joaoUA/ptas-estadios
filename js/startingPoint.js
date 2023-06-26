@@ -1,23 +1,27 @@
 const startingPointInput = document.getElementById('input-starting-address');
-const calculateRouteBtn = document.getElementById('btn-calculate-route');
-calculateRouteBtn.addEventListener('click', async () => {
+const btnGetStartingPoints = document.getElementById('btn-get-address');
 
-    addrSource.clear();
-    routeSource.clear();
+btnGetStartingPoints.addEventListener('click', async () => {
+
+    startPointsLayer.getSource().clear();
+    routeLayer.getSource().clear();
 
     const address = startingPointInput.value.trim();
     if (!address || stadiumSelect.value === defaultSelectValue)
         return;
-
     const addressCoords = await getAddressCoordinates(address);
 
-    const startingPointsFeatures = addressCoords.features.map(feat => new ol.Feature({
-        geometry: new ol.geom.Poin(feat.geometry.coordinates).transform(turfProjection, mapContext.projection),
-        label: feat.properties.label
-    }));
-    addrSource.addFeatures(startingPointsFeatures);
+    const startingPointsFeatures = addressCoords.features.map(feat =>
+        new ol.Feature({
+            geometry: new ol.geom.Point(feat.geometry.coordinates).transform(
+                'EPSG:4326',
+                'EPSG:3857'),
+            label: feat.properties.label
+        }));
+    startPointsLayer.getSource().addFeatures(startingPointsFeatures);
 
     const startingPointsContainer = document.getElementById('starting-points-container');
+    startingPointsContainer.innerHTML = "";
     startingPointsFeatures.forEach(feat => {
         const parent = document.createElement('div');
         parent.classList.add('starting-point');
@@ -56,6 +60,9 @@ async function calculateRoute(startingPoint) {
     const origin = startingPoint.values_.geometry.flatCoordinates;
     const destiny = stadiumSelect.value.split(",").map(str => parseFloat(str));
 
+    console.log(getAddressPopup());
+    console.log(getAddressPopupElement());
+
     getAddressPopup().setPosition(origin);
     getAddressPopupElement().removeAttribute('hidden');
     getAddressPopupElement().innerText = startingPoint.values_label;
@@ -68,15 +75,19 @@ async function calculateRoute(startingPoint) {
     const transformedPoints = shapePoints.map(coord => ol.proj.transform(
         coord,
         turfProjection,
-        mapContext.projection
+        'EPSG:3857'
     ));
     const route = new ol.Feature({
         geometry: new ol.geom.LineString(transformedPoints)
     });
-    routeSource.clear();
-    routeSource.addFeatures(route);
+    routeLayer.getSource().clear();
+    routeLayer.getSource().addFeatures(route);
 
-    map.getView().fit(routeSource.getExtent(), {
+    console.log(routeLayer.getSource());
+
+
+    //todo: not getting any features?????
+    map.getView().fit(routeLayer.getSource().getExtent(), {
         padding: [100, 100, 100, 100]
     });
 }
