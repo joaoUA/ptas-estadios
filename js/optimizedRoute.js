@@ -9,12 +9,17 @@ async function getOptimizedRoute(from, to) {
     const toCoords = turf.toWgs84(turf.point(to)).geometry.coordinates;
 
     const base = `https://routing.gis4cloud.pt/route?json={"locations":[{"lat":${fromCoords[1]},"lon":${fromCoords[0]}\},{"lat":${toCoords[1]},"lon":${toCoords[0]}\}],"costing":"auto","costing_options":{"auto":{"country_crossing_penalty":2000.0}},"units":"kilometers%20","id":"my_work_route"}`;
-    const data = await fetchData(base);
 
-    const shape = data.trip.legs[0].shape;
-    const decoded = decode(shape);
+    try {
+        const data = await fetchData(base);
 
-    return decoded;
+        const shape = data.trip.legs[0].shape;
+        const decoded = decode(shape);
+        return decoded;
+    } catch (error) {
+        alert('Não foi possível encontrar uma rota entre os dois pontos!');
+        return null;
+    }
 };
 
 /**

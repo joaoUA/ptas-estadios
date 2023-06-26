@@ -40,12 +40,13 @@ btnGetStartingPoints.addEventListener('click', async () => {
         startingPointsContainer.appendChild(parent);
 
         parent.addEventListener('click', () => {
-            calculateRoute(feat)
+            try {
+                calculateRoute(feat)
+            } catch (error) {
+            }
         });
     })
 });
-
-
 
 async function getAddressCoordinates(address) {
     const geocodingAPI = '5b3ce3597851110001cf6248effbb3f392b94119b82ddf1d0a903043';
@@ -54,11 +55,12 @@ async function getAddressCoordinates(address) {
     const url = new URL(baseURL);
     url.searchParams.append('api_key', geocodingAPI);
     url.searchParams.append('text', address);
+    url.searchParams.append('boundary.country', 'PT');
 
     try {
         return await fetchData(url);
     } catch (error) {
-        console.log(error);
+        alert("Não foi possível obter a localização do endereço: " + address);
         return null;
     }
 }
@@ -71,10 +73,11 @@ async function calculateRoute(startingPoint) {
 
     getAddressPopup().setPosition(origin);
     getAddressPopupElement().removeAttribute('hidden');
-    console.log(startingPoint);
     getAddressPopupElement().innerText = startingPoint.values_.label;
 
     const decodedShape = await getOptimizedRoute(origin, destiny);
+    if (decodedShape == null)
+        return;
     const shapePoints = decodedShape.map(coord => [coord[1], coord[0]]); //coordinates come flipped
     const transformedPoints = shapePoints.map(coord => ol.proj.transform(
         coord,
