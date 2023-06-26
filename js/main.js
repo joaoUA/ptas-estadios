@@ -194,4 +194,19 @@ async function run() {
 
     //todo:
     //inserir alertas para inputs errados
+
+    //todo:
+    //alterar icon do estadio para simbolo do clube
+    //adicionar imagens numa pasta
+    //caminhos vão para a db
+    //adicionar funcao de estilo que indica qual o icon a escolher
+
+    //todo:
+    //fazer o mesmo para icons de pois
+
+    //todo:
+    //experimentar incluir vários pontos ao longo do país
+    //ao fazer rota
+    //criar buffer da rota e verificar quais os pontos ao longo do caminho
+    //e num raio à volta do estádio
 }

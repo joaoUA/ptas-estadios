@@ -7,8 +7,14 @@ btnGetStartingPoints.addEventListener('click', async () => {
     routeLayer.getSource().clear();
 
     const address = startingPointInput.value.trim();
-    if (!address || stadiumSelect.value === defaultSelectValue)
+    if (!address) {
+        alert('Introduza um endereço como ponto de partida');
         return;
+    }
+    if (stadiumSelect.value === defaultSelectValue) {
+        alert('Selecione um estádio');
+        return;
+    }
     const addressCoords = await getAddressCoordinates(address);
 
     console.log(addressCoords);
