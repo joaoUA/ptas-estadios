@@ -71,7 +71,8 @@ async function calculateRoute(startingPoint) {
 
     getAddressPopup().setPosition(origin);
     getAddressPopupElement().removeAttribute('hidden');
-    getAddressPopupElement().innerText = startingPoint.values_label;
+    console.log(startingPoint);
+    getAddressPopupElement().innerText = startingPoint.values_.label;
 
     const decodedShape = await getOptimizedRoute(origin, destiny);
     const shapePoints = decodedShape.map(coord => [coord[1], coord[0]]); //coordinates come flipped
@@ -81,9 +82,9 @@ async function calculateRoute(startingPoint) {
         'EPSG:3857'
     ));
     const route = new ol.Feature({
-        geometry: new ol.geom.LineString(transformedPoints)
+        geometry: new ol.geom.LineString(transformedPoints),
+        style: routeStyle
     });
-    console.log(route);
     routeLayer.getSource().addFeature(route);
 
     map.getView().fit(routeLayer.getSource().getExtent(), {

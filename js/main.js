@@ -91,13 +91,7 @@ startPointsLayer.setProperties({ 'name': 'starting-points' });
 
 const routeLayer = new ol.layer.Vector({
     source: new ol.source.Vector({}),
-    style: new ol.style.Style({
-        stroke: new ol.style.Stroke({
-            color: 'purple',
-            width: 5,
-            //lineDash: [5,5]
-        })
-    }),
+    style: routeStyle,
     zIndex: 2
 })
 featLayers.getLayers().push(routeLayer);
@@ -132,7 +126,9 @@ async function run() {
         });
 
     stadiumSelect.addEventListener('change', async (event) => {
-        document.getElementById('toggle-filters-btn').click();
+        const filtersModal = document.getElementById('filters-modal');
+        if (!filtersModal.hidden)
+            filtersModal.hidden = true;
         document.getElementById('stadium-info-container').hidden = false;
 
         const selectedIndex = event.target.selectedIndex;
@@ -187,5 +183,15 @@ async function run() {
                 });
                 generatePoISidebarList();
             });
+
     })
+
+    //todo:
+    //começar o website ao selectionar um dos estádios
+
+    //todo:
+    //permitir alterar o mapa de fundo
+
+    //todo:
+    //inserir alertas para inputs errados
 }

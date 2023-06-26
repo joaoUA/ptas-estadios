@@ -17,3 +17,22 @@
 	border-style: solid;
 	border-color: var(--dark-color) transparent transparent transparent;
 }
+#address-popup {
+	z-index: 2;
+
+	background-color: var(--main-color);
+	padding: 0.5em 1em;
+	border: 1px solid var(--terciary-color);
+	border-radius: 0.2em;
+	margin-bottom: 0.8em;
+}
+#address-popup::after {
+	content: "";
+	position: absolute;
+	bottom: calc(6px - 0.2em);
+	left: 50%;
+	margin-left: -10px;
+	border-width: 10px 10px 0 10px;
+	border-style: solid;
+	border-color: var(--dark-color) transparent transparent transparent;
+}
