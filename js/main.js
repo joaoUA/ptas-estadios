@@ -110,7 +110,6 @@ async function run() {
     const [stadiums, pointsOfInterest] = await Promise.all([getStadiumData(), getPointsOfInterestData()]);
     stadiumsLayer.getSource().addFeatures(geojsonFormat.readFeatures(stadiums));
 
-    console.log(pointsOfInterest);
     const blankOption = document.createElement('option');
     blankOption.selected = true;
     blankOption.disabled = true;
@@ -188,29 +187,8 @@ async function run() {
 
     //Simulate a click on the first available option
     const optionElements = stadiumSelect.getElementsByTagName('option');
-    const randomIndex = Math.floor(Math.random() * optionElements.length);
+    const randomIndex = Math.floor(Math.random() * (optionElements.length - 1)) + 1;
     const randomOption = optionElements[randomIndex];
     randomOption.selected = true;
     stadiumSelect.dispatchEvent(new Event('change'));
-
-    //todo:
-    //permitir alterar o mapa de fundo
-
-    //todo:
-    //inserir alertas para inputs errados
-
-    //todo:
-    //alterar icon do estadio para simbolo do clube
-    //adicionar imagens numa pasta
-    //caminhos vão para a db
-    //adicionar funcao de estilo que indica qual o icon a escolher
-
-    //todo:
-    //fazer o mesmo para icons de pois
-
-    //todo:
-    //experimentar incluir vários pontos ao longo do país
-    //ao fazer rota
-    //criar buffer da rota e verificar quais os pontos ao longo do caminho
-    //e num raio à volta do estádio
 }

@@ -30,7 +30,7 @@ async function getPolygonAroundStadium(center) {
 
     const longitude = projected[0];
     const latitude = projected[1];
-    const time = 15.0;
+    const time = parseInt(minutesSlider.value);
 
     let polygonsFeatures = await getRoutingPolygon(longitude, latitude, time);
 

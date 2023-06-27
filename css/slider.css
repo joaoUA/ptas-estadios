@@ -1,0 +1,32 @@
+#input-minutes {
+	-webkit-appearance: none;
+	appearance: none;
+	height: 4px;
+	background: var(--secondary-color);
+	outline: none;
+	border-radius: 0.5em;
+	opacity: 0.7;
+	-webkit-transition: 0.2s;
+	transition: opacity 0.2s;
+}
+
+#input-minutes:hover {
+	opacity: 1;
+}
+
+#input-minutes::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 16px;
+	height: 16px;
+	background: var(--terciary-color);
+	cursor: pointer;
+	border-radius: 8px;
+}
+#input-minutes::-moz-range-thumb {
+	width: 16px;
+	height: 16px;
+	border-radius: 8px;
+	background: var(--terciary-color);
+	cursor: pointer;
+}

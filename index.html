@@ -26,6 +26,7 @@
     <script src="./js/popup.js" defer></script>
     <script src="./js/openLayerStyling.js" defer></script>
     <script src="./js/startingPoint.js" defer></script>
+    <script src="./js/slider.js" defer></script>
 
     <script src="./js/main.js" defer></script>
 </head>
@@ -39,9 +40,13 @@
                 </select>
             </div>
             <div id="stadium-info-container" hidden>
-                <button id="toggle-filters-btn">
-                    <i class="fa-solid fa-filter"></i>
-                </button>
+                <div>
+                    <button id="toggle-filters-btn">
+                        <i class="fa-solid fa-filter"></i>
+                    </button>
+                    <label id="minutes-label" for="input-minutes">15 minutos</label>
+                    <input type="range" id="input-minutes" min="10" max="30" step="5" value="15">
+                </div>
                 <ul id="poi-list">
                 </ul>
             </div>

@@ -67,6 +67,12 @@
 	font-size: 1em;
 	margin-bottom: 0.5em;
 }
+#stadium-info-container > div {
+	display: flex;
+	justify-content: flex-start;
+	gap: 0.5em;
+	align-items: center;
+}
 
 #poi-list {
 	margin: 0.5em 0;
